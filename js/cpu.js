@@ -80,6 +80,16 @@ function scoreAction(state, seat, action) {
   }
   if (id === 'spike') return action.tile === bestSpikeTile(state, seat) ? 7 : 3;
   if (id === 'curse') return action.tile === bestCurseTile(state, seat) ? 7 : 3;
+  if (id === 'sprint') return rankOf(state, seat) > 1 ? 8 : 5;
+  if (id === 'boost') return rankOf(state, seat) === 1 ? 7 : 5;
+  if (id === 'overdrive') return 10;
+  if (id === 'pull') {
+    const target = state.players[action.target];
+    if (!target) return 0;
+    return target.pos > player.pos ? 7 : 4;
+  }
+  if (id === 'push') return 6;
+  if (id === 'polarity') return 9;
   return 0;
 }
 
@@ -103,6 +113,8 @@ function scoreUpgrade(state, seat, id) {
     case 'spike_plus':
     case 'blade_plus':
     case 'zero_guard':
+    case 'field_plus':
+    case 'sprint_plus':
       return 6;
     default: return 1;
   }

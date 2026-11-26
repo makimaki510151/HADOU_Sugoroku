@@ -10,7 +10,8 @@ import {
 } from '../js/engine.js';
 import { chooseCpuAction } from '../js/cpu.js';
 import { isMyTurnSeat } from '../js/turn.js';
-import { tileRect } from '../js/board.js';
+import { describeTile, tileRect } from '../js/board.js';
+import { JOB_LIST } from '../js/jobs.js';
 
 function setup(jobs, seed = 3) {
   const { state } = createGame({
@@ -423,5 +424,58 @@ describe('同期とCPU', () => {
       localSeat: 1,
       localPeerId: 'hadou-host',
     }), true);
+  });
+});
+
+describe('罠のマーク', () => {
+  it('仕掛けた罠は隠さない限り説明できる', () => {
+    const s = setup(['trap', 'vanguard']);
+    s.players[0].pos = 5;
+    act(s, 0, { type: 'skill', id: 'spike', tile: 3 });
+    assert.equal(s.tiles[3].hidden, false);
+    assert.match(describeTile(s, 3), /スパイク/);
+    s.tiles[3].hidden = true;
+    assert.match(describeTile(s, 3), /しかけてありそう|仕掛けてありそう/);
+  });
+});
+
+describe('マグネットとランナー', () => {
+  it('職は6つある', () => {
+    assert.equal(JOB_LIST.length, 6);
+    assert.ok(JOB_LIST.some((j) => j.id === 'magnet'));
+    assert.ok(JOB_LIST.some((j) => j.id === 'runner'));
+  });
+
+  it('引き寄せは前方の相手を自分側へ寄せる', () => {
+    const s = setup(['magnet', 'vanguard']);
+    s.players[1].pos = 6;
+    const res = act(s, 0, { type: 'skill', id: 'pull', target: 1 });
+    assert.equal(res.ok, true);
+    assert.equal(s.players[1].pos, 3);
+  });
+
+  it('加速床を踏むとさらに進んで床が消える', () => {
+    const s = setup(['runner', 'vanguard']);
+    act(s, 0, { type: 'skill', id: 'boost', tile: 2 });
+    assert.equal(s.tiles[2].kind, 'boost');
+    assert.equal(s.tiles[2].hidden, false);
+    assert.match(describeTile(s, 2), /加速床/);
+    act(s, 0, { type: 'roll' }, [2]);
+    assert.equal(s.players[0].pos, 5);
+    assert.equal(s.tiles[2], null);
+  });
+
+  it('磁力帯はターン開始に近い相手を削る', () => {
+    const s = setup(['magnet', 'vanguard']);
+    s.players[0].pos = 5;
+    s.players[1].pos = 6;
+    s.turn = 1;
+    act(s, 1, { type: 'roll' }, [0]);
+    if (s.phase === 'draft') {
+      const seat = Number(Object.keys(s.drafts.offers)[0]);
+      act(s, seat, { type: 'draft', upgradeId: s.drafts.offers[seat][0] });
+    }
+    assert.equal(s.turn, 0);
+    assert.equal(s.players[1].hp, s.players[1].maxHp - 2);
   });
 });
