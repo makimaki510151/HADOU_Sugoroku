@@ -58,6 +58,8 @@ const app = {
   drag: null,
   toastTimer: null,
   flashResolve: null,
+  draftPeek: false,
+  lookSeat: null,
 };
 
 function escapeHtml(s) {
@@ -218,42 +220,56 @@ function renderHud() {
   $('#players-panel').innerHTML = g.players.map((p) => {
     const ratio = Math.max(0, Math.min(1, p.hp / p.maxHp));
     const tags = badges(p);
+    const looking = app.lookSeat === p.id;
     return `
-      <article class="player-card ${p.id === cur?.id ? 'turn' : ''} ${controlling(p) ? 'me' : ''}" style="--pc:${p.color}">
+      <button type="button" class="player-card ${p.id === cur?.id ? 'turn' : ''} ${controlling(p) ? 'me' : ''} ${looking ? 'looking' : ''}" data-look="${p.id}" style="--pc:${p.color}">
         <div class="pc-top"><strong>${rankOf(g, p.id)}位 ${escapeHtml(p.name)}</strong><span>${p.hp}/${p.maxHp}</span></div>
         <div class="pc-sub">${JOBS[p.job].mark} ${JOBS[p.job].name} ・ ${p.pos + 1}マス${p.isCPU ? ' ・ CPU' : ''}${p.offline ? ' ・ 切断' : ''}</div>
         <div class="hp"><span style="width:${ratio * 100}%; background-color:${p.color}"></span></div>
-        ${tags.length ? `<div class="badges">${tags.map((t) => `<span class="badge">${escapeHtml(t)}</span>`).join('')}</div>` : ''}
-      </article>
+        <div class="badges">${tags.map((t) => `<span class="badge">${escapeHtml(t)}</span>`).join('')}<span class="badge look-badge">${looking ? '表示中' : '技'}</span></div>
+      </button>
     `;
   }).join('');
 
-  const focus = g.phase === 'act' ? cur : (mePlayer() || cur);
+  const looked = app.lookSeat != null ? g.players[app.lookSeat] : null;
+  const focus = looked || (g.phase === 'act' ? cur : (g.players.find((p) => controlling(p)) || cur));
   const job = focus ? JOBS[focus.job] : null;
-  const mine = focus && g.phase === 'act' && focus.id === cur?.id && myTurn() && !app.busy;
+  const actionable = !!(
+    focus && g.phase === 'act' && focus.id === cur?.id && myTurn() && !app.busy
+  );
   let skills = '';
-  if (job) {
-    skills = `<p class="passive">常時 ${escapeHtml(job.passive.name)} — ${escapeHtml(job.passive.desc)}</p>`
+  if (job && focus) {
+    const showBack = looked && !(g.phase === 'act' && looked.id === cur?.id);
+    const back = showBack
+      ? `<button type="button" class="btn tiny" id="btn-look-back">手番に戻す</button>`
+      : '';
+    skills = `<div class="sheet-head"><div><strong>${escapeHtml(focus.name)} のスキル</strong><div class="pc-sub">${escapeHtml(job.name)} ・ ダイス${job.dice[0]}〜${job.dice[1]}</div></div>${back}</div>`
+      + `<p class="passive">常時 ${escapeHtml(job.passive.name)} — ${escapeHtml(job.passive.desc)}</p>`
       + job.skills.map((sk) => {
         const ct = focus.ct[sk.id] || 0;
         const lock = skillLockReason(g, focus.id, sk.id);
-        const usable = mine && !lock;
-        const ctLabel = ct > 0 ? `CT${ct}` : (sk.kind === 'ult' ? '必殺' : '使える');
-        return `<button type="button" class="btn skill-btn" data-skill="${sk.id}" ${usable ? '' : 'disabled'}>
+        const usable = actionable && !lock;
+        const ctLabel = ct > 0 ? `CT${ct}` : (lock ? '条件' : (sk.kind === 'ult' ? '必殺' : '使える'));
+        const detail = lock && ct === 0 ? `${sk.desc}（${lock}）` : sk.desc;
+        return `<button type="button" class="btn skill-btn${usable ? '' : ' look'}" ${usable ? `data-skill="${sk.id}"` : 'disabled'}>
           <span class="ct">${ctLabel}</span>
           ${escapeHtml(sk.name)}
-          <small>${escapeHtml(lock && ct === 0 ? lock : sk.desc)}</small>
+          <small>${escapeHtml(detail)}</small>
         </button>`;
       }).join('');
   }
   $('#skills-panel').innerHTML = skills;
 
-  const canRoll = mine && listActions(g, cur.id).some((a) => a.type === 'roll');
+  const canRoll = g.phase === 'act' && myTurn() && !app.busy && !!cur
+    && listActions(g, cur.id).some((a) => a.type === 'roll');
+  $('#btn-roll').hidden = g.phase === 'draft';
   $('#btn-roll').disabled = !canRoll;
+  const draftWaiting = myDraftSeats().length > 0;
+  $('#btn-draft-open').hidden = !(draftWaiting && app.draftPeek);
   const waiting = g.phase === 'act' && !myTurn() && g.phase !== 'gameover';
   $('#wait-hint').hidden = !(waiting || g.phase === 'draft');
   $('#wait-hint').textContent = g.phase === 'draft'
-    ? '強化を選んでいる'
+    ? (draftWaiting && app.draftPeek ? '盤と相手を見てから、強化を選んで' : '強化を選んでいる')
     : `${cur?.name || ''}の番`;
   const pickingDraft = myDraftSeats().length > 0;
   $('#btn-nudge').hidden = !(app.mode !== 'local' && app.game && g.phase !== 'gameover' && !myTurn() && !pickingDraft);
@@ -285,7 +301,12 @@ function myDraftSeats() {
 function renderModal() {
   const seats = app.busy ? [] : myDraftSeats();
   const picking = app.playerPick;
+  if (app.game?.phase !== 'draft') app.draftPeek = false;
   if (!seats.length && !picking) {
+    $('#modal').hidden = true;
+    return;
+  }
+  if (seats.length && !picking && app.draftPeek) {
     $('#modal').hidden = true;
     return;
   }
@@ -296,10 +317,12 @@ function renderModal() {
       <button type="button" class="btn draft-card" data-pick-target="${b.id}">${escapeHtml(b.label)}</button>
     `).join('')}</div>`;
     $('#btn-modal-cancel').hidden = false;
+    $('#btn-modal-cancel').textContent = '閉じる';
     return;
   }
   $('#modal-title').textContent = '強化を1枚';
-  $('#btn-modal-cancel').hidden = true;
+  $('#btn-modal-cancel').hidden = false;
+  $('#btn-modal-cancel').textContent = '盤面を見る';
   $('#modal-body').innerHTML = seats.map((seat) => {
     const player = app.game.players[seat];
     const cards = app.game.drafts.offers[seat].map((id) => {
@@ -1165,10 +1188,29 @@ function bind() {
   $('#btn-lobby-start').onclick = () => { audio.sfx.click(); startOnline(); };
   $('#btn-lobby-reconnect').onclick = () => { audio.sfx.click(); connectLobby(); };
 
+  $('#players-panel').onclick = (ev) => {
+    const card = ev.target.closest('[data-look]');
+    if (!card || !app.game) return;
+    const seat = Number(card.dataset.look);
+    app.lookSeat = app.lookSeat === seat ? null : seat;
+    audio.sfx.click();
+    refresh();
+  };
   $('#skills-panel').onclick = (ev) => {
+    if (ev.target.closest('#btn-look-back')) {
+      app.lookSeat = null;
+      audio.sfx.cancel();
+      refresh();
+      return;
+    }
     const btn = ev.target.closest('[data-skill]');
     if (!btn) return;
     useSkill(btn.dataset.skill);
+  };
+  $('#btn-draft-open').onclick = () => {
+    app.draftPeek = false;
+    audio.sfx.click();
+    refresh();
   };
   $('#btn-roll').onclick = () => {
     if (!myTurn()) return;
@@ -1191,6 +1233,12 @@ function bind() {
     }
   };
   $('#modal').onclick = (ev) => {
+    if (ev.target === $('#modal') && !app.playerPick && myDraftSeats().length) {
+      app.draftPeek = true;
+      audio.sfx.cancel();
+      refresh();
+      return;
+    }
     const draft = ev.target.closest('[data-upgrade]');
     if (draft) {
       sendLocal(Number(draft.dataset.draftSeat), { type: 'draft', upgradeId: draft.dataset.upgrade });
@@ -1207,8 +1255,17 @@ function bind() {
     }
   };
   $('#btn-modal-cancel').onclick = () => {
-    app.playerPick = null;
-    $('#modal').hidden = true;
+    if (app.playerPick) {
+      app.playerPick = null;
+      audio.sfx.cancel();
+      refresh();
+      return;
+    }
+    if (myDraftSeats().length) {
+      app.draftPeek = true;
+      audio.sfx.cancel();
+      refresh();
+    }
   };
   $('#ef-continue').onclick = () => app.flashResolve?.();
   $('#btn-again').onclick = () => {
@@ -1250,6 +1307,7 @@ function bind() {
     if (ev.key === 'Escape') {
       app.targeting = null;
       app.playerPick = null;
+      if (app.game?.phase === 'draft' && myDraftSeats().length) app.draftPeek = true;
       refresh();
     }
     if (ev.key !== ' ' && ev.code !== 'Space') return;
