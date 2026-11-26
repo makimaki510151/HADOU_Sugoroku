@@ -135,11 +135,11 @@ describe('ヴァンガード', () => {
 describe('トラップマスター', () => {
   it('自分の罠は踏まず、HPが少し戻る', () => {
     const s = setup(['trap', 'vanguard']);
-    s.players[0].hp = 10;
+    s.players[0].hp = 6;
     s.tiles[1] = { kind: 'spike', owner: 0, damage: 6 };
     act(s, 0, { type: 'roll' }, [1]);
     assert.equal(s.players[0].pos, 1);
-    assert.equal(s.players[0].hp, 12);
+    assert.equal(s.players[0].hp, 8);
   });
 
   it('他人の罠は普通に刺さる', () => {
@@ -165,6 +165,8 @@ describe('トラップマスター', () => {
     const s = setup(['trap', 'vanguard']);
     s.tiles[4] = { kind: 'spike', owner: 0, damage: 6 };
     s.tiles[6] = { kind: 'curse', owner: 0, back: 3 };
+    s.players[1].maxHp = 40;
+    s.players[1].hp = 40;
     s.players[1].pos = 5;
     const res = act(s, 0, { type: 'skill', id: 'pandemonium' });
     assert.equal(res.ok, true);
@@ -230,7 +232,7 @@ describe('アサシン', () => {
 
   it('半分以下を処刑で倒すと全CTが戻る', () => {
     const s = setup(['assassin', 'vanguard']);
-    s.players[1].hp = 8;
+    s.players[1].hp = 5;
     s.players[0].ct.poison = 2;
     s.players[0].ct.shadow = 4;
     const res = act(s, 0, { type: 'skill', id: 'execute', target: 1 });
@@ -257,12 +259,12 @@ describe('アサシン', () => {
 describe('ギャンブラー', () => {
   it('0で回復し、通常スキルのCTが縮む', () => {
     const s = setup(['gambler', 'vanguard']);
-    s.players[0].hp = 10;
+    s.players[0].hp = 4;
     s.players[0].ct.loaded = 2;
     s.players[0].ct.roulette = 1;
     act(s, 0, { type: 'roll' }, [0]);
     assert.equal(s.players[0].pos, 0);
-    assert.equal(s.players[0].hp, 14);
+    assert.equal(s.players[0].hp, 8);
     assert.equal(s.players[0].ct.loaded, 1);
     assert.equal(s.players[0].ct.roulette, 0);
     assert.equal(s.players[0].stats.zeros, 1);
@@ -383,7 +385,7 @@ describe('ラウンド', () => {
     s.players[1].pos = 5;
     act(s, 1, { type: 'roll' }, [0, 0]);
     assert.equal(s.turn, 0);
-    assert.equal(s.players[0].hp, 12);
+    assert.equal(s.players[0].hp, 4);
     assert.equal(s.players[0].diceModNext, 3);
     assert.equal(s.players[0].justRevived, false);
   });

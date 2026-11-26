@@ -8,7 +8,7 @@ export const JOBS = {
     name: 'ヴァンガード',
     mark: '盾',
     dice: [1, 6],
-    hp: 30,
+    hp: 10,
     blurb: '正面から折る。硬くて、抜けがいい。',
     passive: {
       id: 'spirit',
@@ -49,7 +49,7 @@ export const JOBS = {
     name: 'トラップマスター',
     mark: '罠',
     dice: [1, 6],
-    hp: 22,
+    hp: 10,
     blurb: '空いてるマスに杭と呪印。自分の罠は踏んでも得する。',
     passive: {
       id: 'insight',
@@ -94,7 +94,7 @@ export const JOBS = {
     name: 'アサシン',
     mark: '刃',
     dice: [2, 5],
-    hp: 16,
+    hp: 10,
     blurb: '出目は2〜5で読みやすい。隣に立ったら刺して、さらに前へ。',
     passive: {
       id: 'footwork',
@@ -138,7 +138,7 @@ export const JOBS = {
     name: 'ギャンブラー',
     mark: '運',
     dice: [0, 8],
-    hp: 20,
+    hp: 10,
     blurb: '0も出る。8も出る。当たれば一番うるさい。',
     passive: {
       id: 'luck',
