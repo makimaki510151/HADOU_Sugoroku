@@ -49,4 +49,12 @@ describe('画面の骨', () => {
     assert.doesNotMatch(css, /linear-gradient\([^)]*#7c3aed/i);
     assert.match(css, /Yusei Magic/);
   });
+
+  it('終了画面は結果PNGとタイトルへがある', () => {
+    assert.match(html, /id="btn-export"/);
+    assert.match(html, /結果をPNG/);
+    assert.doesNotMatch(html, /結果JSON/);
+    assert.match(html, /id="btn-again"/);
+    assert.match(html, /タイトルへ/);
+  });
 });
