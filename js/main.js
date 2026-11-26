@@ -1,4 +1,4 @@
-/** 波動すごろく — 画面とネット。ルールは engine、盤は board、音は audio。 */
+/** 覇道すごろく — 画面とネット。ルールは engine、盤は board、音は audio。 */
 
 import { APP_VERSION } from './version.js';
 import { createAudio } from './audio.js';
