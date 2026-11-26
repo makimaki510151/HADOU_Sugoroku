@@ -5,6 +5,8 @@ import {
   applyAction,
   createGame,
   listActions,
+  orderByLastFirst,
+  rankOf,
   serializeState,
   skillLockReason,
 } from '../js/engine.js';
@@ -476,6 +478,57 @@ describe('ラウンド', () => {
     assert.equal(s.round, 2);
     assert.deepEqual(s.turnOrder, [1, 2, 0]);
     assert.equal(s.turn, 1);
+  });
+
+  it('ラウンド中に追い抜いても手番順は開始時点のまま', () => {
+    const s = setup(['vanguard', 'trap', 'assassin']);
+    s.players[0].pos = 5;
+    s.players[1].pos = 10;
+    s.players[2].pos = 15;
+    s.turnOrder = [0, 1, 2];
+    s.turnIndex = 0;
+    s.turn = 0;
+    s.actedThisRound = true;
+    act(s, 0, { type: 'roll' }, [6]);
+    // 席0が進んでも、ラウンド中の次手番は開始順どおり席1
+    assert.equal(s.round, 1);
+    assert.deepEqual(s.turnOrder, [0, 1, 2]);
+    assert.equal(s.turn, 1);
+  });
+
+  it('同着の順位と、開始時の後ろ扱い（席番号大が先）', () => {
+    const s = setupNatural(['vanguard', 'trap', 'assassin']);
+    s.players[0].pos = 10;
+    s.players[1].pos = 10;
+    s.players[2].pos = 4;
+    assert.equal(rankOf(s, 0), 1);
+    assert.equal(rankOf(s, 1), 1);
+    assert.equal(rankOf(s, 2), 2);
+    assert.deepEqual(orderByLastFirst(s), [2, 1, 0]);
+  });
+
+  it('全員休みの一周ではラウンドが進まずドラフトが二重にならない', () => {
+    const s = setup(['vanguard', 'trap']);
+    act(s, 0, { type: 'roll' }, [1]);
+    s.players[0].pos = 12;
+    s.players[1].pos = 5;
+    act(s, 1, { type: 'roll' }, [0]);
+    assert.equal(s.round, 2);
+    assert.equal(s.phase, 'draft');
+    // ドラフト直後の手番で両方ダウンしている状況を作る
+    s.players[0].downed = true;
+    s.players[0].hp = 0;
+    s.players[1].downed = true;
+    s.players[1].hp = 0;
+    const draftRound = s.round;
+    for (const seat of Object.keys(s.drafts.offers).map(Number)) {
+      act(s, seat, { type: 'draft', upgradeId: s.drafts.offers[seat][0] });
+    }
+    assert.equal(s.round, draftRound);
+    assert.equal(s.phase, 'act');
+    assert.equal(s.drafts, null);
+    assert.ok(s.players[s.turn].hp > 0);
+    assert.equal(s.players[s.turn].justRevived, false);
   });
 
   it('休みの次の自分の番で復帰し、ヴァンガードは出目+3', () => {

@@ -157,6 +157,8 @@ export function createGame({ players, seed = 1, cpuLevel = 'normal' }) {
     log: [],
     seq: 0,
     goal: GOAL,
+    /** このラウンドで誰かが実際に行動可能な番を迎えたか（休みスキップのみの周回でラウンドを進めない） */
+    actedThisRound: false,
   };
   state.turnOrder = orderByLastFirst(state);
   state.turnIndex = 0;
@@ -692,6 +694,7 @@ function beginTurn(state, events) {
     }
   }
   state.phase = 'act';
+  state.actedThisRound = true;
   events.push({ t: 'turn', seat: player.id, round: state.round });
 }
 
@@ -706,9 +709,20 @@ function endTurn(state, events) {
   if (idx < 0) idx = state.turnIndex || 0;
   state.turnIndex = (idx + 1) % n;
   if (state.turnIndex === 0) {
+    // 休みスキップだけで一周した場合はラウンドを進めず、復帰番をもう一周する
+    // （そうしないと強化ドラフトが連打される）
+    if (!state.actedThisRound) {
+      state.turnOrder = orderByLastFirst(state);
+      state.turn = state.turnOrder[0];
+      state.turnIndex = 0;
+      beginTurn(state, events);
+      return;
+    }
     state.round += 1;
+    state.actedThisRound = false;
     state.turnOrder = orderByLastFirst(state);
     state.turn = state.turnOrder[0];
+    state.turnIndex = 0;
     pushRoundDivider(state, events);
     const names = state.turnOrder.map((id) => state.players[id].name).join(' → ');
     events.push(pushLog(state, `手番: ${names}`, 'system'));

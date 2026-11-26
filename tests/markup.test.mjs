@@ -74,4 +74,13 @@ describe('画面の骨', () => {
   it('ログのラウンド区切りスタイルがある', () => {
     assert.match(css, /#log \.divider/);
   });
+  it('ダイス演出に個数・出目・合計の枠がある', () => {
+    assert.match(html, /id="dice-kicker"/);
+    assert.match(html, /id="dice-faces"/);
+    assert.match(html, /id="dice-math"/);
+    assert.match(html, /id="dice-label"/);
+    assert.match(css, /\.die\b/);
+    assert.match(css, /\.dice-math/);
+  });
+
 });
