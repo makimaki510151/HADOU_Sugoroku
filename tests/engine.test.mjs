@@ -321,6 +321,18 @@ describe('アサシン', () => {
     assert.equal(act(s, 0, { type: 'skill', id: 'poison', target: 1 }).ok, false);
     assert.equal(s.players[1].hp, s.players[1].maxHp);
   });
+
+  it('毒刃の候補列挙は遠投げperkでも落ちない（CPU進行不能の再発防止）', () => {
+    const s = setup(['assassin', 'vanguard']);
+    s.players[0].pos = 0;
+    s.players[1].pos = 5;
+    s.players[0].perks.poisonRange = 1;
+    const actions = listActions(s, 0);
+    assert.ok(actions.some((a) => a.type === 'skill' && a.id === 'poison' && a.target === 1));
+    const cpu = chooseCpuAction(s, 0, 'normal', new Set());
+    assert.ok(cpu);
+    assert.ok(cpu.type === 'roll' || cpu.type === 'skill');
+  });
 });
 
 describe('ギャンブラー', () => {
