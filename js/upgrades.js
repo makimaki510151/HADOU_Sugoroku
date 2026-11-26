@@ -1,12 +1,12 @@
 /** ラウンド開始の強化ドラフト。1位以外に3枚見せて1枚。 */
 
 export const UPGRADES = [
-  { id: 'dice_plus', name: '出目のクセ', blurb: 'この先、ダイス1個につき出目+1（2回まで）' },
+  { id: 'dice_plus', name: '出目のクセ', blurb: 'この先、ダイス1個につき出目+1（永続・重ねて最大+2）' },
   { id: 'hp_up', name: '体力の貯金', blurb: '最大HP+2、いまのHPも+2' },
   { id: 'candy', name: '応急キャンディ', blurb: 'HPを4回復' },
   { id: 'shortcut', name: '裏路地', blurb: 'すぐに3マス進む' },
   { id: 'ct_cut', name: '手慣れた技', blurb: '通常スキルのCTを1短縮（永続・最低1）', once: true },
-  { id: 'punch', name: 'ひと押し', blurb: '与えるダメージ+1（永続・2回まで）' },
+  { id: 'punch', name: 'ひと押し', blurb: '与えるダメージ+1（永続・重ねて最大+2）' },
   { id: 'cheer', name: '気合い', blurb: '次に振るダイスの合計+2' },
   { id: 'omamori', name: 'お守り', blurb: '次に受けるダメージを1回無効', once: true },
   { id: 'watchstep', name: '足元注意', blurb: '次に踏む他人の罠を1回無視' },
