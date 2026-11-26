@@ -4,6 +4,13 @@
  */
 export const PATCH_NOTES = [
   {
+    version: '1.6.7',
+    date: '2026-11-26',
+    items: [
+      '部屋を開くときは部屋コード入力欄を出さないようにした（hidden がスタイルで潰れていた）',
+    ],
+  },
+  {
     version: '1.6.6',
     date: '2026-11-26',
     items: [
