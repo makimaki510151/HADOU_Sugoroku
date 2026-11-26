@@ -36,10 +36,16 @@ button:disabled { opacity: 0.45; cursor: default; }
   display: none;
   position: fixed;
   inset: 0;
-  overflow: auto;
+  /* 対局ログ以外は画面スクロールさせない。長文パネルだけ例外 */
+  overflow: hidden;
   padding: 1.1rem;
 }
 .screen.active { display: flex; }
+#screen-howto.active,
+#screen-jobs.active,
+#screen-patch.active {
+  overflow: auto;
+}
 
 .paper-dots {
   position: absolute;
@@ -245,6 +251,83 @@ input[type="text"], input:not([type]) {
 .seat-top input { flex: 1; }
 .color-picks button { width: 1.7rem; height: 1.7rem; padding: 0; border-radius: 50%; }
 .color-picks button[disabled] { opacity: 0.25; }
+
+/* ローカルNPC戦：4席でもビューポートに収める */
+#screen-setup {
+  align-items: center;
+  justify-content: center;
+  padding: clamp(0.45rem, 1.6vh, 1.1rem);
+}
+.setup-panel {
+  width: min(860px, 100%);
+  max-height: 100%;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
+  padding: clamp(0.55rem, 1.4vh, 1rem) clamp(0.7rem, 2vw, 1.1rem) clamp(0.6rem, 1.5vh, 1rem);
+}
+.setup-panel h2 {
+  font-size: clamp(1.25rem, 3.2vh, 1.8rem);
+  margin: 0.05rem 0 0.2rem;
+}
+.setup-panel .hint {
+  margin: 0 0 0.2rem;
+  font-size: clamp(0.78rem, 1.8vh, 0.92rem);
+  line-height: 1.35;
+}
+.setup-panel .level-row {
+  margin: 0.15rem 0 0.35rem;
+  flex: none;
+}
+#setup-seats {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: clamp(0.3rem, 1vh, 0.5rem);
+  flex: 1 1 auto;
+  min-height: 0;
+  align-content: start;
+  overflow: hidden;
+}
+.setup-panel .seat {
+  margin: 0;
+  padding: clamp(0.35rem, 1vh, 0.55rem) clamp(0.4rem, 1.2vw, 0.55rem);
+  border-radius: 14px;
+  min-width: 0;
+}
+.setup-panel .seat-top input {
+  min-width: 0;
+  padding: 0.3rem 0.45rem;
+  font-size: 0.9rem;
+}
+.setup-panel .seat-top button {
+  flex: none;
+  padding: 0.22rem 0.55rem;
+  font-size: 0.8rem;
+}
+.job-picks-compact {
+  flex-wrap: nowrap;
+  gap: 0.22rem;
+  margin-top: 0.3rem;
+}
+.job-picks-compact button {
+  flex: 1 1 0;
+  min-width: 0;
+  padding: 0.28rem 0.15rem;
+  font-size: 0.92rem;
+  text-align: center;
+  border-radius: 10px;
+  box-shadow: 2px 2px 0 var(--ink);
+}
+.setup-actions {
+  margin-top: clamp(0.4rem, 1.2vh, 0.7rem);
+  flex: none;
+  flex-wrap: wrap;
+}
+.setup-actions .btn {
+  padding: 0.55rem 0.85rem;
+  font-size: 0.92rem;
+}
 
 .lobby-grid { display: grid; grid-template-columns: 1.2fr 0.8fr; gap: 1rem; }
 .code-big {
@@ -861,7 +944,28 @@ input[type="text"], input:not([type]) {
     white-space: normal;
     line-height: 1.3;
     max-height: 3.6rem;
-    overflow: auto;
+    overflow: hidden;
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 3;
+  }
+  #screen-setup { padding: 0.45rem; padding-bottom: calc(0.45rem + env(safe-area-inset-bottom)); }
+  .setup-panel {
+    width: 100%;
+    padding: 0.55rem 0.55rem 0.6rem;
+  }
+  #setup-seats {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.3rem;
+  }
+  .job-picks-compact button {
+    font-size: 0.82rem;
+    padding: 0.22rem 0.1rem;
+  }
+  .setup-actions .btn {
+    flex: 1 1 calc(50% - 0.3rem);
+    min-width: 0;
+    text-align: center;
   }
   .board-zoom button { min-width: 2.1rem; padding: 0.2rem 0.3rem; }
   #vol-dock {

@@ -3,7 +3,15 @@
 import { APP_VERSION } from './version.js';
 import { createAudio } from './audio.js';
 import { createNet } from './net.js';
-import { JOB_LIST, JOBS, PLAYER_COLORS } from './jobs.js';
+import {
+  JOB_LIST,
+  JOBS,
+  PLAYER_COLORS,
+  markedNum,
+  passiveDescFor,
+  skillCtCap,
+  skillDescFor,
+} from './jobs.js';
 import { upgradeById } from './upgrades.js';
 import { PATCH_NOTES } from './patchNotes.js';
 import { isLocalPlayer, isMyTurnSeat } from './turn.js';
@@ -45,6 +53,8 @@ const app = {
   cam: createCamera(),
   userCam: false,
   displayPos: null,
+  /** 演出中に見せる手番。state.turn は先に進むので、turn イベントまでここを使う */
+  turnMarkSeat: null,
   queue: [],
   inbox: [],
   busy: false,
@@ -100,6 +110,7 @@ function returnToTitle() {
   app.mode = null;
   app.busy = false;
   app.pumping = false;
+  app.turnMarkSeat = null;
   app.queue = [];
   app.inbox = [];
   app.targeting = null;
@@ -186,7 +197,7 @@ function exportResultsPng() {
   ctx.font = `20px ${body}`;
   ctx.fillStyle = '#5a4036';
   const jobName = winner ? (JOBS[winner.job]?.name || winner.job) : '';
-  ctx.fillText(`${jobName}が100マス目に乗った  ·  v${APP_VERSION}`, pad, pad + 108);
+  ctx.fillText(`${jobName}がマス100に乗った  ·  v${APP_VERSION}`, pad, pad + 108);
 
   let y = pad + 140;
   ranked.forEach((p, i) => {
@@ -194,7 +205,7 @@ function exportResultsPng() {
     ctx.font = `22px ${body}`;
     ctx.fillText(`${i + 1}. ${p.name}`, pad, y);
     ctx.textAlign = 'right';
-    ctx.fillText(`${p.pos + 1}マス / HP${p.hp}`, W - pad, y);
+    ctx.fillText(`マス${p.pos + 1} / HP${p.hp}`, W - pad, y);
     ctx.textAlign = 'left';
     const barY = y + 10;
     const barW = W - pad * 2;
@@ -283,9 +294,9 @@ function setStatus(msg, kind = 'info') {
   el.className = `status-line ${kind}`;
 }
 
-function jobButtons(selected, attr = 'data-job') {
+function jobButtons(selected, attr = 'data-job', { compact = false } = {}) {
   return JOB_LIST.map((job) => `
-    <button type="button" ${attr}="${job.id}" class="${selected === job.id ? 'on' : ''}" title="${escapeHtml(job.blurb)}">${job.mark} ${job.name}</button>
+    <button type="button" ${attr}="${job.id}" class="${selected === job.id ? 'on' : ''}" title="${escapeHtml(job.name)} — ${escapeHtml(job.blurb)}" aria-label="${escapeHtml(job.name)}">${compact ? job.mark : `${job.mark} ${job.name}`}</button>
   `).join('');
 }
 
@@ -296,7 +307,7 @@ function renderSetup() {
         <input data-field="name" maxlength="12" value="${escapeHtml(seat.name)}" aria-label="名前" />
         <button type="button" data-field="cpu">${seat.cpu ? 'CPU' : '人間'}</button>
       </div>
-      <div class="job-picks">${jobButtons(seat.job)}</div>
+      <div class="job-picks job-picks-compact">${jobButtons(seat.job, 'data-job', { compact: true })}</div>
     </div>
   `).join('');
   $('#setup-level').querySelectorAll('button').forEach((btn) => {
@@ -389,12 +400,43 @@ function myTurn() {
   });
 }
 
+/** HUD・盤の手番マーク用。演出中は turn イベントまで動かさない */
+function markedTurnPlayer() {
+  const g = app.game;
+  if (!g) return null;
+  if (app.busy && app.turnMarkSeat != null && g.players[app.turnMarkSeat]) {
+    return g.players[app.turnMarkSeat];
+  }
+  return currentPlayer(g);
+}
+
+function actorSeatFromEvents(events) {
+  for (const e of events || []) {
+    if (e?.t === 'turn') break;
+    if (e?.seat == null) continue;
+    if (['dice', 'step', 'skill', 'place', 'rest', 'revive', 'boom', 'roulette', 'win', 'ko'].includes(e.t)) {
+      return e.seat;
+    }
+  }
+  return null;
+}
+
 function renderHud() {
   const g = app.game;
   if (!g) return;
-  const cur = currentPlayer(g);
+  const cur = markedTurnPlayer();
+  const sysCur = currentPlayer(g);
   $('#round-chip').textContent = `R${g.round}`;
-  $('#turn-chip').textContent = g.phase === 'draft' ? '強化' : g.phase === 'gameover' ? '終了' : `${cur?.name || ''}の番`;
+  // 演出中（移動・罠など）は phase が先に draft/次手番へ進んでいても、マークは動かさない
+  if (app.busy && cur) {
+    $('#turn-chip').textContent = `${cur.name}の番`;
+  } else if (g.phase === 'draft') {
+    $('#turn-chip').textContent = '強化';
+  } else if (g.phase === 'gameover') {
+    $('#turn-chip').textContent = '終了';
+  } else {
+    $('#turn-chip').textContent = `${cur?.name || ''}の番`;
+  }
   const lead = Math.max(...g.players.map((p) => p.pos));
   $('#goal-chip').textContent = `先頭 残り${Math.max(0, GOAL - lead)}`;
   $('#current-name').textContent = cur ? `${cur.name} / ${JOBS[cur.job].name}` : '';
@@ -406,7 +448,7 @@ function renderHud() {
     return `
       <button type="button" class="player-card ${p.id === cur?.id ? 'turn' : ''} ${controlling(p) ? 'me' : ''} ${looking ? 'looking' : ''}" data-look="${p.id}" style="--pc:${p.color}">
         <div class="pc-top"><strong>${rankOf(g, p.id)}位 ${escapeHtml(p.name)}</strong><span>${p.hp}/${p.maxHp}</span></div>
-        <div class="pc-sub">${JOBS[p.job].mark} ${JOBS[p.job].name} ・ ${p.pos + 1}マス${p.isCPU ? ' ・ CPU' : ''}${p.offline ? ' ・ 切断' : ''}</div>
+        <div class="pc-sub">${JOBS[p.job].mark} ${JOBS[p.job].name} ・ マス${p.pos + 1}${p.isCPU ? ' ・ CPU' : ''}${p.offline ? ' ・ 切断' : ''}</div>
         <div class="hp"><span style="width:${ratio * 100}%; background-color:${p.color}"></span></div>
         <div class="badges">${tags.map((t) => `<span class="badge">${escapeHtml(t)}</span>`).join('')}<span class="badge look-badge">${looking ? '表示中' : '技'}</span></div>
       </button>
@@ -416,8 +458,9 @@ function renderHud() {
   const looked = app.lookSeat != null ? g.players[app.lookSeat] : null;
   const focus = looked || (g.phase === 'act' ? cur : (g.players.find((p) => controlling(p)) || cur));
   const job = focus ? JOBS[focus.job] : null;
+  // 操作可否はシステム手番（sysCur）。表示マーク（cur）とは別に見る
   const actionable = !!(
-    focus && g.phase === 'act' && focus.id === cur?.id && myTurn() && !app.busy
+    focus && g.phase === 'act' && focus.id === sysCur?.id && myTurn() && !app.busy
   );
   let skills = '';
   if (job && focus) {
@@ -426,13 +469,18 @@ function renderHud() {
       ? `<button type="button" class="btn tiny" id="btn-look-back">手番に戻す</button>`
       : '';
     skills = `<div class="sheet-head"><div><strong>${escapeHtml(focus.name)} のスキル</strong><div class="pc-sub">${escapeHtml(job.name)} ・ ダイス${job.dice[0]}〜${job.dice[1]}</div></div>${back}</div>`
-      + `<p class="passive">常時 ${escapeHtml(job.passive.name)} — ${escapeHtml(job.passive.desc)}</p>`
+      + `<p class="passive">常時 ${escapeHtml(job.passive.name)} — ${escapeHtml(passiveDescFor(focus, job.passive))}</p>`
       + job.skills.map((sk) => {
         const ct = focus.ct[sk.id] || 0;
         const lock = skillLockReason(g, focus.id, sk.id);
         const usable = actionable && !lock;
-        const ctLabel = ct > 0 ? `CT${ct}` : (lock ? '条件' : (sk.kind === 'ult' ? '必殺' : '使える'));
-        const detail = lock && ct === 0 ? `${sk.desc}（${lock}）` : sk.desc;
+        const cap = skillCtCap(focus, sk);
+        const ctCapLabel = `CT${markedNum(cap.current, cap.base)}`;
+        const ctLabel = ct > 0
+          ? `CT${ct}`
+          : (lock ? '条件' : (cap.current !== cap.base ? ctCapLabel : (sk.kind === 'ult' ? '必殺' : '使える')));
+        const body = skillDescFor(focus, sk);
+        const detail = lock && ct === 0 ? `${body}（${lock}）` : body;
         return `<button type="button" class="btn skill-btn${usable ? '' : ' look'}" ${usable ? `data-skill="${sk.id}"` : 'disabled'}>
           <span class="ct">${ctLabel}</span>
           ${escapeHtml(sk.name)}
@@ -442,8 +490,8 @@ function renderHud() {
   }
   $('#skills-panel').innerHTML = skills;
 
-  const canRoll = g.phase === 'act' && myTurn() && !app.busy && !!cur
-    && listActions(g, cur.id).some((a) => a.type === 'roll');
+  const canRoll = g.phase === 'act' && myTurn() && !app.busy && !!sysCur
+    && listActions(g, sysCur.id).some((a) => a.type === 'roll');
   $('#btn-roll').hidden = g.phase === 'draft';
   $('#btn-roll').disabled = !canRoll;
   const draftWaiting = myDraftSeats().length > 0;
@@ -464,12 +512,16 @@ function renderHud() {
   const logEl = $('#log');
   if (logEl) {
     const lines = g.log.slice(-24);
+    const prevTop = logEl.scrollTop;
+    // 下端付近にいるときだけ追従。さかのぼり中に新規ログで飛ばない
     const stickBottom = logEl.scrollHeight - logEl.scrollTop - logEl.clientHeight < 48;
     logEl.innerHTML = lines.map((line) => (
       `<p class="${escapeHtml(line.kind || '')}">${escapeHtml(line.text)}</p>`
     )).join('');
-    if (stickBottom || lines.length) {
+    if (stickBottom) {
       logEl.scrollTop = logEl.scrollHeight;
+    } else {
+      logEl.scrollTop = prevTop;
     }
   }
 
@@ -533,10 +585,10 @@ function renderWinner() {
   const winner = g.players[g.winner];
   $('#winner').hidden = false;
   $('#winner-name').textContent = `${winner?.name || ''} の勝ち`;
-  $('#winner-sub').textContent = `${JOBS[winner.job].name}が100マス目に乗った`;
+  $('#winner-sub').textContent = `${JOBS[winner.job].name}がマス100に乗った`;
   $('#results-body').innerHTML = ranked.map((p, i) => `
     <div class="result-row">
-      <div class="pc-top"><span>${i + 1}. ${escapeHtml(p.name)}</span><span>${p.pos + 1}マス / HP${p.hp}</span></div>
+      <div class="pc-top"><span>${i + 1}. ${escapeHtml(p.name)}</span><span>マス${p.pos + 1} / HP${p.hp}</span></div>
       <div class="result-bar"><span style="width:${((p.pos + 1) / 100) * 100}%; --pc:${p.color}"></span></div>
     </div>
   `).join('') + `<div>${awards.map((a) => `<span class="award">${escapeHtml(a.title)} ${escapeHtml(a.name)}（${escapeHtml(a.detail)}）</span>`).join('')}</div>`;
@@ -575,6 +627,7 @@ function draw() {
     viewW: canvas.width,
     viewH: canvas.height,
     displayPos: app.displayPos,
+    turnSeat: markedTurnPlayer()?.id,
     highlight: app.targeting?.tiles,
     inspect: app.inspectIndex,
     time: performance.now(),
@@ -673,7 +726,8 @@ async function playDiceOverlay(e) {
     : (parts.length > 1 ? `${parts.join(' + ')} = ${e.total}` : `出目 ${e.total}`);
   label.textContent = diceMoveLabel(e);
   audio.sfx.diceLand(e.faces[0]?.value || 1);
-  await wait(720);
+  // 出目・合計・進むマスを読めるよう、結果表示を長めに残す
+  await wait(2000);
   overlay.hidden = true;
 }
 
@@ -728,7 +782,7 @@ async function playEvent(e) {
   }
   if (e.t === 'win') {
     audio.sfx.win();
-    await flash('GOAL', `${name(e.seat)} の勝ち`, '100マス目');
+    await flash('GOAL', `${name(e.seat)} の勝ち`, 'マス100');
     return;
   }
   if (e.t === 'skill') {
@@ -742,7 +796,8 @@ async function playEvent(e) {
   else if (e.t === 'block') audio.sfx.block();
   else if (e.t === 'roulette') audio.sfx.roulette();
   else if (e.t === 'upgrade' || e.t === 'draft') audio.sfx.draft();
-  else if (e.t === 'turn') {
+  else   if (e.t === 'turn') {
+    app.turnMarkSeat = e.seat;
     const player = g.players[e.seat];
     if (controlling(player)) audio.sfx.yourTurn();
     app.cpuSeat = null;
@@ -760,6 +815,8 @@ function enqueue(events) {
   if (list.some((e) => e.t === 'step' || e.t === 'swap')) {
     app.displayPos = rewind(list, app.game);
   }
+  const actor = actorSeatFromEvents(list);
+  if (actor != null) app.turnMarkSeat = actor;
   app.queue.push(...list);
   pump();
 }
@@ -779,6 +836,7 @@ async function pump() {
     app.busy = false;
     app.pumping = false;
     app.targeting = null;
+    if (app.game) app.turnMarkSeat = app.game.turn;
     refresh();
     scheduleCpu();
     drainInbox();
@@ -810,6 +868,8 @@ function resolveAction(seat, action) {
     if (ct === 0) app.cpuUsed.delete(action.id);
     else app.cpuUsed.add(action.id);
   }
+  // 移動・罠などの演出が終わるまで手番マークを動かさない
+  app.turnMarkSeat = seat;
   publish(res.events);
 }
 

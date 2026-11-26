@@ -86,6 +86,7 @@ function trapMark(tile) {
  *   viewW: number,
  *   viewH: number,
  *   displayPos?: Record<number, number>,
+ *   turnSeat?: number|null,
  *   highlight?: Set<number>|number[],
  *   inspect?: number|null,
  *   time?: number,
@@ -163,7 +164,8 @@ export function drawBoard(ctx, opts) {
   ctx.strokeStyle = '#221814';
   ctx.stroke();
 
-  const current = state?.players?.[state.turn];
+  const turnSeat = opts.turnSeat != null ? opts.turnSeat : state?.turn;
+  const current = state?.players?.[turnSeat];
 
   for (let i = 0; i < 100; i++) {
     const r = tileRect(i);
@@ -298,11 +300,11 @@ function drawToken(ctx, x, y, player, active) {
 
 export function describeTile(state, index) {
   if (index < 0 || index > 99) return 'コースの外';
-  if (index === 0) return '1マス スタート';
-  if (index === 99) return '100マス ゴール。乗った人の勝ち';
+  if (index === 0) return 'マス1 スタート';
+  if (index === 99) return 'マス100 ゴール。乗った人の勝ち';
   const tile = state?.tiles?.[index];
   const who = state?.players?.filter((p) => p.pos === index).map((p) => p.name).join('、');
-  let body = `${index + 1}マス`;
+  let body = `マス${index + 1}`;
   if (!tile) body += ' なんもない';
   else if (tile.hidden) body += ' なにか仕掛けてありそう…';
   else if (tile.kind === 'spike') {

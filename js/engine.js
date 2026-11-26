@@ -165,7 +165,7 @@ export function createGame({ players, seed = 1, cpuLevel = 'normal' }) {
   state.turn = state.turnOrder[0];
   const events = [];
   pushRoundDivider(state, events);
-  events.push(pushLog(state, '覇道スタート。100マス目に先に乗った人が勝ち', 'system'));
+  events.push(pushLog(state, '覇道スタート。マス100に先に乗った人が勝ち', 'system'));
   events.push(pushLog(state, `手番は後ろの人から（${state.turnOrder.map((id) => state.players[id].name).join(' → ')}）`, 'system'));
   beginTurn(state, events);
   return { state, events };
@@ -332,8 +332,9 @@ export function skillLockReason(state, seat, skillId) {
     const low = player.hp / player.maxHp <= (sk.hpRate || 0.3);
     if (!low && !isLastPlace(state, seat)) return '最下位か、HP30%以下のとき';
   }
-  if (skillId === 'poison' && playersInRange(state, seat, sk.range || 4).length === 0) {
-    return '届く範囲に相手がいない';
+  if (skillId === 'poison') {
+    const range = (sk.range || 4) + (player.perks.poisonRange || 0);
+    if (playersInRange(state, seat, range).length === 0) return '届く範囲に相手がいない';
   }
   if (skillId === 'spike' && spikeTiles(state, seat).length === 0) {
     return '後ろ3マスに空がない';
@@ -396,7 +397,8 @@ export function listActions(state, seat) {
       continue;
     }
     if (sk.id === 'poison') {
-      for (const o of playersInRange(state, seat, sk.range || 4)) {
+      const range = (sk.range || 4) + (player.perks.poisonRange || 0);
+      for (const o of playersInRange(state, seat, range)) {
         actions.push({ type: 'skill', id: 'poison', target: o.id });
       }
       continue;
@@ -474,7 +476,7 @@ function declareWin(state, seat, events) {
   state.winner = seat;
   state.drafts = null;
   events.push({ t: 'win', seat });
-  events.push(pushLog(state, `${player.name} が100マス目に到達。勝ち！`, 'ult'));
+  events.push(pushLog(state, `${player.name} がマス100に到達。勝ち！`, 'ult'));
 }
 
 function knockback(state, seat, n, events) {
@@ -524,7 +526,7 @@ function enterTile(state, seat, pos, events, opts) {
   if (opts.destroyBad && (tile.kind === 'spike' || tile.kind === 'curse')) {
     state.tiles[pos] = null;
     events.push({ t: 'smash', pos, kind: tile.kind, seat });
-    events.push(pushLog(state, `${player.name} が${pos + 1}マスの罠を踏み砕いた`, 'ult'));
+    events.push(pushLog(state, `${player.name} がマス${pos + 1}の罠を踏み砕いた`, 'ult'));
     return false;
   }
   if (tile.kind === 'boost') {
@@ -544,14 +546,14 @@ function enterTile(state, seat, pos, events, opts) {
   }
   if (tile.kind === 'spike') {
     events.push({ t: 'spring', kind: 'spike', seat, pos });
-    events.push(pushLog(state, `${player.name} が${pos + 1}マスのスパイクを踏んだ`, 'bad'));
+    events.push(pushLog(state, `${player.name} がマス${pos + 1}のスパイクを踏んだ`, 'bad'));
     hurt(state, seat, tile.damage || 3, tile.owner, events, 'spike');
     breakTrapAfterSpring(state, pos, tile, events);
     return true;
   }
   if (tile.kind === 'curse') {
     events.push({ t: 'spring', kind: 'curse', seat, pos });
-    events.push(pushLog(state, `${player.name} は${pos + 1}マスの呪印で戻される`, 'bad'));
+    events.push(pushLog(state, `${player.name} はマス${pos + 1}の呪印で戻される`, 'bad'));
     knockback(state, seat, tile.back || 2, events);
     breakTrapAfterSpring(state, pos, tile, events);
     return true;
@@ -562,13 +564,13 @@ function enterTile(state, seat, pos, events, opts) {
 /** 起動した罠は基本壊れる。durable だけ例外で残る。 */
 function breakTrapAfterSpring(state, pos, tile, events) {
   if (tile?.durable) {
-    events.push(pushLog(state, `${pos + 1}マスの罠は粘着して残った`, 'system'));
+    events.push(pushLog(state, `マス${pos + 1}の罠は粘着して残った`, 'system'));
     return;
   }
   if (state.tiles[pos] !== tile) return;
   state.tiles[pos] = null;
   events.push({ t: 'break', pos, kind: tile.kind });
-  events.push(pushLog(state, `${pos + 1}マスの罠は壊れた`, 'system'));
+  events.push(pushLog(state, `マス${pos + 1}の罠は壊れた`, 'system'));
 }
 
 /** 強化「粘着の罠」を1回消費して durable 罠を置く。 */
@@ -654,6 +656,9 @@ function consumeMod(player, sum) {
 function beginTurn(state, events) {
   if (state.phase === 'gameover') return;
   const player = currentPlayer(state);
+  // 手番マークはターン開始直後に出す。移動・罠・休み演出のあいだは前の人のままにするため、
+  // システム上の turn 切替より演出側がこのイベントを見てマークを進める。
+  events.push({ t: 'turn', seat: player.id, round: state.round });
   tickCt(player);
   player.ironGuard = false;
   player.loaded = false;
@@ -695,7 +700,6 @@ function beginTurn(state, events) {
   }
   state.phase = 'act';
   state.actedThisRound = true;
-  events.push({ t: 'turn', seat: player.id, round: state.round });
 }
 
 function endTurn(state, events) {
@@ -927,7 +931,7 @@ function doSkill(state, seat, action, events) {
     events.push({ t: 'place', seat, tile: action.tile, kind: 'spike', durable });
     events.push(pushLog(
       state,
-      `${player.name} が${action.tile + 1}マスにスパイク${durable ? '（粘着）' : ''}`,
+      `${player.name} がマス${action.tile + 1}にスパイク${durable ? '（粘着）' : ''}`,
       'skill',
     ));
     return '';
@@ -943,7 +947,7 @@ function doSkill(state, seat, action, events) {
     events.push({ t: 'place', seat, tile: action.tile, kind: 'curse', durable });
     events.push(pushLog(
       state,
-      `${player.name} が${action.tile + 1}マスに呪印${durable ? '（粘着）' : ''}`,
+      `${player.name} がマス${action.tile + 1}に呪印${durable ? '（粘着）' : ''}`,
       'skill',
     ));
     return '';
@@ -960,24 +964,23 @@ function doSkill(state, seat, action, events) {
     player.stats.traps += 1;
     setCt(player, id);
     events.push({ t: 'place', seat, tile: action.tile, kind: 'boost' });
-    events.push(pushLog(state, `${player.name} が${action.tile + 1}マスに加速床`, 'skill'));
+    events.push(pushLog(state, `${player.name} がマス${action.tile + 1}に加速床`, 'skill'));
     return '';
   }
   if (id === 'poison') {
-    const targets = playersInRange(state, seat, sk.range || 4);
+    const range = (sk.range || 4) + (player.perks.poisonRange || 0);
+    const targets = playersInRange(state, seat, range);
     const target = state.players[action.target];
     if (!target || !targets.includes(target)) return 'その相手には届かない';
     setCt(player, id);
     const dmg = power(player, sk.damage || 3, 'bladePlus');
     const hit = hurt(state, target.id, dmg, seat, events, 'poison');
-    const pen = (sk.penalty || 2) + (player.perks.poisonPen || 0);
-    if (!hit.blocked) target.diceModNext -= pen;
     events.push({ t: 'skill', seat, id, target: target.id });
     events.push(pushLog(
       state,
       hit.blocked
         ? `${player.name} の毒刃は${target.name}に弾かれた`
-        : `${player.name} の毒刃 → ${target.name}。次の出目-${pen}`,
+        : `${player.name} の毒刃 → ${target.name}`,
       'skill',
     ));
     return '';

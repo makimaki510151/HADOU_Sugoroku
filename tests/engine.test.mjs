@@ -13,7 +13,7 @@ import {
 import { chooseCpuAction } from '../js/cpu.js';
 import { isMyTurnSeat } from '../js/turn.js';
 import { describeTile, tileRect } from '../js/board.js';
-import { JOB_LIST } from '../js/jobs.js';
+import { JOB_LIST, markedNum, passiveDescFor, skillCtCap, skillDescFor } from '../js/jobs.js';
 import { UPGRADES, upgradePool, isUpgradeAvailable, upgradeById } from '../js/upgrades.js';
 
 function setup(jobs, seed = 3) {
@@ -303,17 +303,13 @@ describe('アサシン', () => {
     assert.equal(s.players[1].hp, 4);
   });
 
-  it('毒刃はダメージと次の出目-2', () => {
+  it('毒刃はダメージのみ（出目ペナルティなし）', () => {
     const s = setup(['assassin', 'vanguard']);
     s.players[0].pos = 0;
     s.players[1].pos = 3;
     act(s, 0, { type: 'skill', id: 'poison', target: 1 });
     assert.equal(s.players[1].hp, s.players[1].maxHp - 3);
-    assert.equal(s.players[1].diceModNext, -2);
-    act(s, 0, { type: 'roll' }, [2]);
-    act(s, 1, { type: 'roll' }, [3]);
-    assert.equal(s.players[1].pos, 4);
-    assert.equal(s.players[1].diceModNext, 0);
+    assert.equal(s.players[1].diceModNext || 0, 0);
   });
 
   it('毒刃は前後4マスを超えると届かない', () => {
@@ -697,5 +693,76 @@ describe('強化プール', () => {
     }
     assert.equal(s3.turn, 0);
     assert.equal(s3.players[0].hp, Math.min(s3.players[0].maxHp, 8 + 1));
+  });
+});
+
+describe('強化数値の表記', () => {
+  it('変わったときだけ 現在(初期) になる', () => {
+    assert.equal(markedNum(3, 3), '3');
+    assert.equal(markedNum(4, 3), '4(3)');
+  });
+
+  it('ダッシュの移動とダメージが強化を反映する', () => {
+    const s = setup(['vanguard', 'trap']);
+    const p = s.players[0];
+    const sk = JOB_LIST[0].skills.find((x) => x.id === 'dash');
+    assert.match(skillDescFor(p, sk), /すぐに3マス進む/);
+    p.perks.dashSteps = 1;
+    p.perks.dashPlus = 1;
+    const text = skillDescFor(p, sk);
+    assert.match(text, /すぐに4\(3\)マス進む/);
+    assert.match(text, /4\(3\)ダメージ/);
+  });
+
+  it('CT短縮は CT1\(2\) のように出す', () => {
+    const s = setup(['vanguard', 'trap']);
+    const p = s.players[0];
+    p.ctCut = 1;
+    const sk = JOB_LIST[0].skills.find((x) => x.id === 'dash');
+    const cap = skillCtCap(p, sk);
+    assert.equal(cap.current, 1);
+    assert.equal(cap.base, 2);
+    assert.equal(markedNum(cap.current, cap.base), '1(2)');
+  });
+
+  it('パッシブも強化後は括弧付き', () => {
+    const s = setup(['magnet', 'vanguard']);
+    const p = s.players[0];
+    p.perks.fieldRange = 1;
+    p.perks.fieldPlus = 1;
+    const text = passiveDescFor(p, JOB_LIST.find((j) => j.id === 'magnet').passive);
+    assert.match(text, /前後3\(2\)マス/);
+    assert.match(text, /2\(1\)ダメージ/);
+  });
+});
+
+describe('手番演出', () => {
+  it('beginTurn は休みや効果より先に turn イベントを出す', () => {
+    const s = setup(['vanguard', 'trap']);
+    const seat = s.turn;
+    const next = s.players.find((p) => p.id !== seat);
+    next.downed = true;
+    next.hp = 0;
+    const { ok, events } = act(s, seat, { type: 'roll' }, [2]);
+    assert.equal(ok, true);
+    const rest = events.findIndex((e) => e.t === 'rest' && e.seat === next.id);
+    assert.ok(rest >= 0);
+    const turnForNext = events.findIndex((e) => e.t === 'turn' && e.seat === next.id);
+    assert.ok(turnForNext >= 0);
+    assert.ok(turnForNext < rest);
+  });
+
+  it('ダイス移動のあいだはまだ次の turn イベントが来ない並びになる', () => {
+    const s = setup(['vanguard', 'trap']);
+    const seat = s.turn;
+    const { ok, events } = act(s, seat, { type: 'roll' }, [3]);
+    assert.equal(ok, true);
+    const di = events.findIndex((e) => e.t === 'dice' && e.seat === seat);
+    const si = events.findIndex((e) => e.t === 'step' && e.seat === seat);
+    const ti = events.findIndex((e, i) => i > di && e.t === 'turn');
+    assert.ok(di >= 0);
+    assert.ok(si >= 0);
+    assert.ok(ti >= 0);
+    assert.ok(si < ti, 'step before next turn event');
   });
 });
