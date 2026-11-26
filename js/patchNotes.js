@@ -4,6 +4,13 @@
  */
 export const PATCH_NOTES = [
   {
+    version: '1.3.1',
+    date: '2026-11-26',
+    items: [
+      '音量の詳細（全体 / BGM / SE）を縦並びにし、画面からはみ出さないようにした',
+    ],
+  },
+  {
     version: '1.3.0',
     date: '2026-11-26',
     items: [

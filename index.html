@@ -268,8 +268,10 @@
   <div id="toast" hidden></div>
 
   <div id="vol-dock" class="vol-collapsed">
-    <button type="button" id="btn-mute" class="btn tiny">音</button>
-    <button type="button" id="btn-vol-expand" class="btn tiny ghost" aria-label="音量">⋯</button>
+    <div class="vol-head">
+      <button type="button" id="btn-mute" class="btn tiny">音</button>
+      <button type="button" id="btn-vol-expand" class="btn tiny ghost" aria-label="音量">⋯</button>
+    </div>
     <div class="vol-sliders">
       <label>全体<input type="range" id="vol-master" min="0" max="1" step="0.01" /></label>
       <label>BGM<input type="range" id="vol-bgm" min="0" max="1" step="0.01" /></label>
