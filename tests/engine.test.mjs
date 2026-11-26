@@ -98,6 +98,7 @@ describe('ヴァンガード', () => {
     act(s, 0, { type: 'roll' }, [5]);
     assert.equal(s.players[0].pos, 2);
     assert.equal(s.players[0].hp, s.players[0].maxHp - 6);
+    assert.equal(s.tiles[2], null);
   });
 
   it('呪印は戻して移動を打ち切る', () => {
@@ -106,6 +107,7 @@ describe('ヴァンガード', () => {
     act(s, 0, { type: 'roll' }, [4]);
     assert.equal(s.players[0].pos, 1);
     assert.equal(s.players[0].hp, s.players[0].maxHp);
+    assert.equal(s.tiles[3], null);
   });
 
   it('ガードは次の自分のターン開始で切れる', () => {
@@ -171,6 +173,7 @@ describe('トラップマスター', () => {
     act(s, 0, { type: 'roll' }, [1]);
     assert.equal(s.players[0].pos, 1);
     assert.equal(s.players[0].hp, 7);
+    assert.equal(s.tiles[1].kind, 'spike');
   });
 
   it('他人の罠は普通に刺さる', () => {
@@ -180,6 +183,16 @@ describe('トラップマスター', () => {
     act(s, 0, { type: 'roll' }, [3]);
     assert.equal(s.players[0].pos, 1);
     assert.equal(s.players[0].hp, 7);
+    assert.equal(s.tiles[1], null);
+  });
+
+  it('起動した罠は壊れ、粘着だけ残る', () => {
+    const s = setup(['vanguard', 'trap']);
+    s.tiles[2] = { kind: 'spike', owner: 1, damage: 3, durable: true };
+    act(s, 0, { type: 'roll' }, [3]);
+    assert.equal(s.players[0].pos, 2);
+    assert.equal(s.tiles[2].kind, 'spike');
+    assert.equal(s.tiles[2].durable, true);
   });
 
   it('スパイクは後ろ3マスの空マスだけ', () => {
@@ -346,13 +359,15 @@ describe('ギャンブラー', () => {
 
   it('ルーレットの余波で自分がダウンしたら、その番は終わる', () => {
     const s = setup(['gambler', 'assassin']);
-    s.players[0].hp = 6;
+    // 呪印は1回で壊れるので、歩法の刺しは1回分。HP3ならそこでダウン。
+    s.players[0].hp = 3;
     s.players[1].pos = 0;
     s.tiles[2] = { kind: 'curse', owner: 1, back: 3 };
     const res = act(s, 0, { type: 'skill', id: 'roulette' }, [1, 1]);
     assert.equal(res.ok, true);
     assert.equal(s.players[0].hp, 0);
     assert.equal(s.players[0].downed, true);
+    assert.equal(s.tiles[2], null);
     assert.notEqual(s.turn, 0);
   });
 

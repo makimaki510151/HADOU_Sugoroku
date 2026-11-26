@@ -14,6 +14,7 @@ export const UPGRADES = [
   { id: 'guts', name: '根性', blurb: '次の致命傷をHP1で耐える', once: true },
   { id: 'dash_plus', name: '突進のコツ', blurb: 'ダッシュアタックのダメージ+1', job: 'vanguard', once: true },
   { id: 'spike_plus', name: '研いだ杭', blurb: 'これから置くスパイクのダメージ+1', job: 'trap', once: true },
+  { id: 'sticky_trap', name: '粘着の罠', blurb: '次に置く杭か呪印が、起動しても壊れない', job: 'trap' },
   { id: 'blade_plus', name: '刃の油', blurb: '毒刃・歩法・処刑のダメージ+1', job: 'assassin', once: true },
   { id: 'zero_guard', name: 'ゼロ保険', blurb: '次のオールインの0を1回だけ1として扱う', job: 'gambler', once: true },
   { id: 'field_plus', name: '強い磁場', blurb: '磁力帯のダメージ+1', job: 'magnet', once: true },
@@ -36,6 +37,7 @@ export function upgradePool(player) {
     if (u.id === 'omamori' && player.oneShotGuard) return false;
     if (u.id === 'guts' && player.koShield) return false;
     if (u.id === 'watchstep' && (player.trapIgnore || 0) >= 2) return false;
+    if (u.id === 'sticky_trap' && (player.stickyTrap || 0) >= 1) return false;
     if (u.id === 'floor' && (player.floorRolls || 0) >= 3) return false;
     if (u.id === 'ct_cut' && (player.ctCut || 0) >= 1) return false;
     if (u.id === 'zero_guard' && (player.zeroInsure || 0) >= 1) return false;
