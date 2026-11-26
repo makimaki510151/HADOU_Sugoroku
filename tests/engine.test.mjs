@@ -303,17 +303,13 @@ describe('アサシン', () => {
     assert.equal(s.players[1].hp, 4);
   });
 
-  it('毒刃はダメージと次の出目-2', () => {
+  it('毒刃はダメージのみ（出目ペナルティなし）', () => {
     const s = setup(['assassin', 'vanguard']);
     s.players[0].pos = 0;
     s.players[1].pos = 3;
     act(s, 0, { type: 'skill', id: 'poison', target: 1 });
     assert.equal(s.players[1].hp, s.players[1].maxHp - 3);
-    assert.equal(s.players[1].diceModNext, -2);
-    act(s, 0, { type: 'roll' }, [2]);
-    act(s, 1, { type: 'roll' }, [3]);
-    assert.equal(s.players[1].pos, 4);
-    assert.equal(s.players[1].diceModNext, 0);
+    assert.equal(s.players[1].diceModNext || 0, 0);
   });
 
   it('毒刃は前後4マスを超えると届かない', () => {

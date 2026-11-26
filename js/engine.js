@@ -332,8 +332,9 @@ export function skillLockReason(state, seat, skillId) {
     const low = player.hp / player.maxHp <= (sk.hpRate || 0.3);
     if (!low && !isLastPlace(state, seat)) return '最下位か、HP30%以下のとき';
   }
-  if (skillId === 'poison' && playersInRange(state, seat, sk.range || 4).length === 0) {
-    return '届く範囲に相手がいない';
+  if (skillId === 'poison') {
+    const range = (sk.range || 4) + (player.perks.poisonRange || 0);
+    if (playersInRange(state, seat, range).length === 0) return '届く範囲に相手がいない';
   }
   if (skillId === 'spike' && spikeTiles(state, seat).length === 0) {
     return '後ろ3マスに空がない';
@@ -396,7 +397,8 @@ export function listActions(state, seat) {
       continue;
     }
     if (sk.id === 'poison') {
-      for (const o of playersInRange(state, seat, sk.range || 4)) {
+      const range = (sk.range || 4) + (player.perks.poisonRange || 0);
+      for (const o of playersInRange(state, seat, range)) {
         actions.push({ type: 'skill', id: 'poison', target: o.id });
       }
       continue;
@@ -966,20 +968,19 @@ function doSkill(state, seat, action, events) {
     return '';
   }
   if (id === 'poison') {
-    const targets = playersInRange(state, seat, sk.range || 4);
+    const range = (sk.range || 4) + (player.perks.poisonRange || 0);
+    const targets = playersInRange(state, seat, range);
     const target = state.players[action.target];
     if (!target || !targets.includes(target)) return 'その相手には届かない';
     setCt(player, id);
     const dmg = power(player, sk.damage || 3, 'bladePlus');
     const hit = hurt(state, target.id, dmg, seat, events, 'poison');
-    const pen = (sk.penalty || 2) + (player.perks.poisonPen || 0);
-    if (!hit.blocked) target.diceModNext -= pen;
     events.push({ t: 'skill', seat, id, target: target.id });
     events.push(pushLog(
       state,
       hit.blocked
         ? `${player.name} の毒刃は${target.name}に弾かれた`
-        : `${player.name} の毒刃 → ${target.name}。次の出目-${pen}`,
+        : `${player.name} の毒刃 → ${target.name}`,
       'skill',
     ));
     return '';
