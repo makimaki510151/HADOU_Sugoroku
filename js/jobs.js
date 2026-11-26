@@ -23,8 +23,8 @@ export const JOBS = {
         name: 'ダッシュアタック',
         ct: 2,
         steps: 3,
-        damage: 5,
-        desc: 'すぐに3マス進む。追い越した相手に5ダメージ。その後、通常のダイスも振る。',
+        damage: 3,
+        desc: 'すぐに3マス進む。追い越した相手に3ダメージ。その後、通常のダイスも振る。',
       },
       {
         id: 'guard',
@@ -54,8 +54,8 @@ export const JOBS = {
     passive: {
       id: 'insight',
       name: '罠師の知見',
-      desc: '自分の罠は踏んでも発動しない。通過するたびHP+2。',
-      heal: 2,
+      desc: '自分の罠は踏んでも発動しない。通過するたびHP+1。',
+      heal: 1,
     },
     skills: [
       {
@@ -64,8 +64,8 @@ export const JOBS = {
         name: 'スパイク設置',
         ct: 2,
         range: 3,
-        damage: 6,
-        desc: '後ろ3マス以内の空マスに、踏むと6ダメージで強制停止する罠。',
+        damage: 3,
+        desc: '後ろ3マス以内の空マスに、踏むと3ダメージで強制停止する罠。',
       },
       {
         id: 'curse',
@@ -73,8 +73,8 @@ export const JOBS = {
         name: '逆走の呪印',
         ct: 3,
         range: 5,
-        back: 3,
-        desc: '前5マス以内の1マスに、踏むと3マス戻される罠。上書きできる。',
+        back: 2,
+        desc: '前5マス以内の1マスに、踏むと2マス戻される罠。上書きできる。',
       },
       {
         id: 'pandemonium',
@@ -83,9 +83,9 @@ export const JOBS = {
         ct: 6,
         need: 2,
         radius: 2,
-        damage: 9,
+        damage: 4,
         back: 1,
-        desc: '自分の罠が2つ以上あるとき。全部起爆し、各罠の前後2マスの相手に9ダメージ、1マス後退。',
+        desc: '自分の罠が2つ以上あるとき。全部起爆し、各罠の前後2マスの相手に4ダメージ、1マス後退。',
       },
     ],
   },
@@ -99,8 +99,8 @@ export const JOBS = {
     passive: {
       id: 'footwork',
       name: '暗殺者の歩法',
-      desc: '誰かと同じマスに止まると6ダメージ、さらに2マス進む。',
-      damage: 6,
+      desc: '誰かと同じマスに止まると3ダメージ、さらに2マス進む。',
+      damage: 3,
       bonus: 2,
     },
     skills: [
@@ -110,9 +110,9 @@ export const JOBS = {
         name: '毒刃の投擲',
         ct: 2,
         range: 8,
-        damage: 6,
+        damage: 3,
         penalty: 2,
-        desc: '前後8マスの相手1人に6ダメージ。次の出目合計が-2。',
+        desc: '前後8マスの相手1人に3ダメージ。次の出目合計が-2。',
       },
       {
         id: 'shadow',
@@ -127,9 +127,9 @@ export const JOBS = {
         kind: 'ult',
         name: '処刑執行',
         ct: 5,
-        damage: 14,
+        damage: 6,
         hpRate: 0.5,
-        desc: 'HPが半分以下の相手に14ダメージ。この技で倒すと、自分の全CTが0に戻る。',
+        desc: 'HPが半分以下の相手に6ダメージ。この技で倒すと、自分の全CTが0に戻る。',
       },
     ],
   },
@@ -143,8 +143,8 @@ export const JOBS = {
     passive: {
       id: 'luck',
       name: '強運の持ち主',
-      desc: '出目0でHP+4。通常スキルのCTが1つ分短くなる（0の個数ぶん）。',
-      heal: 4,
+      desc: '出目0でHP+2。通常スキルのCTが1つ分短くなる（0の個数ぶん）。',
+      heal: 2,
     },
     skills: [
       {
@@ -160,8 +160,8 @@ export const JOBS = {
         kind: 'active',
         name: '道連れルーレット',
         ct: 3,
-        steps: 4,
-        desc: '全員から1人をランダムに選び、半々で4マス進めるか戻す。ガードは無効化する。',
+        steps: 3,
+        desc: '全員から1人をランダムに選び、半々で3マス進めるか戻す。ガードは無効化する。',
       },
       {
         id: 'allin',
@@ -184,9 +184,9 @@ export const JOBS = {
     passive: {
       id: 'aura',
       name: '磁力帯',
-      desc: '自分のターン開始時、前後2マス以内の相手に2ダメージ。',
+      desc: '自分のターン開始時、前後2マス以内の相手に1ダメージ。',
       range: 2,
-      damage: 2,
+      damage: 1,
     },
     skills: [
       {

@@ -303,7 +303,7 @@ export function describeTile(state, index) {
     body += ` 【杭】スパイク（${owner} / ${tile.damage}ダメ・強制停止）`;
   } else if (tile.kind === 'curse') {
     const owner = state.players[tile.owner]?.name || '誰か';
-    body += ` 【呪】逆走の呪印（${owner} / ${tile.back}マス戻る）`;
+    body += ` 【呪】逆走の呪印（${owner} / ${tile.back || 2}マス戻る）`;
   } else if (tile.kind === 'boost') {
     const owner = state.players[tile.owner]?.name || '誰か';
     body += ` 【走】加速床（${owner} / +${tile.steps || 3}マス・消える）`;
