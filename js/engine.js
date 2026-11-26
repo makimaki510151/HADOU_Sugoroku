@@ -815,6 +815,20 @@ function resolveDrafts(state, events) {
   if (state.phase !== 'gameover') beginTurn(state, events);
 }
 
+/** 候補が空／壊れている席をドラフトから外し、必要なら解決へ進める */
+export function skipDraftSeat(state, seat) {
+  const events = [];
+  if (!state || state.phase !== 'draft' || !state.drafts?.offers?.[seat]) {
+    return fail('いまは選ばなくていい');
+  }
+  delete state.drafts.offers[seat];
+  delete state.drafts.picks[seat];
+  events.push(pushLog(state, `${state.players[seat].name} の強化候補がなくスキップ`, 'system'));
+  const pending = Object.keys(state.drafts.offers).some((id) => !state.drafts.picks[id]);
+  if (!pending) resolveDrafts(state, events);
+  return { ok: true, events };
+}
+
 function fail(error) {
   return { ok: false, error, events: [] };
 }
@@ -831,6 +845,8 @@ export function applyAction(state, seat, action) {
     if (state.phase !== 'draft' || !state.drafts?.offers?.[seat]) return fail('いまは選ばなくていい');
     if (state.drafts.picks[seat]) return fail('もう選んでる');
     const offer = state.drafts.offers[seat];
+    // 空候補は進行不能になるので席をスキップして先へ進める
+    if (!offer.length) return skipDraftSeat(state, seat);
     if (!offer.includes(action.upgradeId)) return fail('その強化は候補にない');
     state.drafts.picks[seat] = action.upgradeId;
     const pending = Object.keys(state.drafts.offers).some((id) => !state.drafts.picks[id]);

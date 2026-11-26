@@ -10,6 +10,7 @@ import {
   rankOf,
   serializeState,
   skillLockReason,
+  skipDraftSeat,
 } from '../js/engine.js';
 import { chooseCpuAction } from '../js/cpu.js';
 import { isMyTurnSeat } from '../js/turn.js';
@@ -470,6 +471,30 @@ describe('ラウンド', () => {
     act(s, 1, { type: 'draft', upgradeId: pick });
     assert.equal(s.phase, 'act');
     assert.equal(s.turn, 1);
+    assert.equal(s.drafts, null);
+  });
+
+  it('空の強化候補席はスキップして進行できる', () => {
+    const s = setup(['vanguard', 'trap']);
+    s.phase = 'draft';
+    s.drafts = { offers: { 0: [], 1: ['thick_skin'] }, picks: {} };
+    const skipped = skipDraftSeat(s, 0);
+    assert.equal(skipped.ok, true);
+    assert.equal(s.drafts.offers[0], undefined);
+    assert.equal(s.phase, 'draft');
+    act(s, 1, { type: 'draft', upgradeId: 'thick_skin' });
+    assert.equal(s.phase, 'act');
+    assert.equal(s.drafts, null);
+    assert.equal(s.players[1].armor, 1);
+  });
+
+  it('draft で空候補に apply しても固まずスキップする', () => {
+    const s = setup(['vanguard', 'trap']);
+    s.phase = 'draft';
+    s.drafts = { offers: { 0: [] }, picks: {} };
+    const res = applyAction(s, 0, { type: 'draft', upgradeId: 'thick_skin' });
+    assert.equal(res.ok, true);
+    assert.equal(s.phase, 'act');
     assert.equal(s.drafts, null);
   });
 
