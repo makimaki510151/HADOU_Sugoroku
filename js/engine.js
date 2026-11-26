@@ -84,9 +84,14 @@ function rollOne(state, min, max, loaded) {
 
 function pushLog(state, text, kind = 'info') {
   state.seq += 1;
-  state.log.unshift({ text, kind, seq: state.seq });
-  if (state.log.length > 80) state.log.length = 80;
+  state.log.push({ text, kind, seq: state.seq });
+  if (state.log.length > 80) state.log.splice(0, state.log.length - 80);
   return { t: 'log', text, kind };
+}
+
+/** ラウンドの軽い区切り行 */
+function pushRoundDivider(state, events) {
+  events.push(pushLog(state, `ラウンド ${state.round}`, 'divider'));
 }
 
 function blankPlayer(raw, index) {
@@ -152,11 +157,14 @@ export function createGame({ players, seed = 1, cpuLevel = 'normal' }) {
     log: [],
     seq: 0,
     goal: GOAL,
+    /** このラウンドで誰かが実際に行動可能な番を迎えたか（休みスキップのみの周回でラウンドを進めない） */
+    actedThisRound: false,
   };
   state.turnOrder = orderByLastFirst(state);
   state.turnIndex = 0;
   state.turn = state.turnOrder[0];
   const events = [];
+  pushRoundDivider(state, events);
   events.push(pushLog(state, '覇道スタート。100マス目に先に乗った人が勝ち', 'system'));
   events.push(pushLog(state, `手番は後ろの人から（${state.turnOrder.map((id) => state.players[id].name).join(' → ')}）`, 'system'));
   beginTurn(state, events);
@@ -686,6 +694,7 @@ function beginTurn(state, events) {
     }
   }
   state.phase = 'act';
+  state.actedThisRound = true;
   events.push({ t: 'turn', seat: player.id, round: state.round });
 }
 
@@ -700,11 +709,23 @@ function endTurn(state, events) {
   if (idx < 0) idx = state.turnIndex || 0;
   state.turnIndex = (idx + 1) % n;
   if (state.turnIndex === 0) {
+    // 休みスキップだけで一周した場合はラウンドを進めず、復帰番をもう一周する
+    // （そうしないと強化ドラフトが連打される）
+    if (!state.actedThisRound) {
+      state.turnOrder = orderByLastFirst(state);
+      state.turn = state.turnOrder[0];
+      state.turnIndex = 0;
+      beginTurn(state, events);
+      return;
+    }
     state.round += 1;
+    state.actedThisRound = false;
     state.turnOrder = orderByLastFirst(state);
     state.turn = state.turnOrder[0];
+    state.turnIndex = 0;
+    pushRoundDivider(state, events);
     const names = state.turnOrder.map((id) => state.players[id].name).join(' → ');
-    events.push(pushLog(state, `ラウンド${state.round}の手番: ${names}`, 'system'));
+    events.push(pushLog(state, `手番: ${names}`, 'system'));
     if (state.round >= 2 && openRoundBonuses(state, events)) return;
   } else {
     state.turn = state.turnOrder[state.turnIndex];
@@ -735,9 +756,7 @@ function openRoundBonuses(state, events) {
   }
   const lastNames = state.players.filter((p) => p.extraDice).map((p) => p.name);
   if (lastNames.length) {
-    events.push(pushLog(state, `ラウンド${state.round}。最下位ボーナス（ダイス+1）: ${lastNames.join('、')}`, 'system'));
-  } else {
-    events.push(pushLog(state, `ラウンド${state.round}`, 'system'));
+    events.push(pushLog(state, `最下位ボーナス（ダイス+1）: ${lastNames.join('、')}`, 'system'));
   }
   const seats = Object.keys(offers);
   if (!seats.length) return false;
