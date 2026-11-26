@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import {
   GOAL,
   applyAction,
+  badges,
   createGame,
   listActions,
   orderByLastFirst,
@@ -368,6 +369,21 @@ describe('ギャンブラー', () => {
     assert.equal(s.players[0].pos, 9);
     assert.equal(s.players[0].hp, s.players[0].maxHp);
     assert.notEqual(s.turn, 0);
+  });
+
+  it('オールインにもダイス+1（個数）と出目+1が乗る', () => {
+    const s = setup(['gambler', 'vanguard']);
+    s.players[0].extraDice = 1;
+    s.players[0].dicePlus = 1;
+    const res = act(s, 0, { type: 'skill', id: 'allin' }, [1, 1, 1, 1]);
+    const dice = res.events.find((e) => e.t === 'dice');
+    assert.equal(dice.faces.length, 4);
+    assert.equal(dice.total, 8); // (1+1)×4
+    assert.equal(s.players[0].pos, 8);
+    const tags = badges(s.players[0]);
+    // 行動後も永続の出目+ は残る。表記は「出目+N」（出目補正+ ではない）
+    assert.ok(tags.includes('出目+1'));
+    assert.ok(!tags.some((t) => t.includes('出目補正')));
   });
 
   it('ゼロ保険は0を1回だけ1にする', () => {

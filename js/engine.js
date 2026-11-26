@@ -45,7 +45,9 @@ export function badges(player) {
   if (player.downed || player.justRevived || player.hp <= 0) b.push('休み');
   if (player.ironGuard) b.push('ガード');
   if (player.loaded) b.push('イカサマ');
+  // 表記は「ダイス+N」（個数）と「出目+N」（出目補正）に揃える
   if (player.extraDice) b.push(`ダイス+${player.extraDice}`);
+  if (player.dicePlus) b.push(`出目+${player.dicePlus}`);
   if (player.diceModNext) {
     b.push(`出目${player.diceModNext > 0 ? '+' : ''}${player.diceModNext}`);
   }
@@ -54,7 +56,6 @@ export function badges(player) {
   if (player.stickyTrap) b.push(`粘着${player.stickyTrap}`);
   if (player.koShield) b.push('根性');
   if (player.zeroInsure) b.push('ゼロ保険');
-  if (player.dicePlus) b.push(`出目補正+${player.dicePlus}`);
   if (player.armor) b.push(`軽減${player.armor}`);
   if (player.regen) b.push(`回復${player.regen}`);
   if (player.ultCut) b.push('必殺短縮');
@@ -1095,7 +1096,8 @@ function doSkill(state, seat, action, events) {
     const [min, max] = jobOf(player).dice;
     const faces = [];
     let sum = 0;
-    const diceN = sk.dice || 2;
+    // ダイス+N（個数）は通常ロールと同じく必殺ダイスにも乗る
+    const diceN = (sk.dice || 2) + (player.extraDice || 0);
     for (let i = 0; i < diceN; i++) {
       const natural = rollOne(state, min, max, false);
       const value = applyFace(player, natural);
@@ -1117,7 +1119,8 @@ function doSkill(state, seat, action, events) {
     const faces = [];
     let sum = 0;
     let bust = false;
-    for (let i = 0; i < (sk.dice || 3); i++) {
+    const diceN = (sk.dice || 3) + (player.extraDice || 0);
+    for (let i = 0; i < diceN; i++) {
       let natural = rollOne(state, min, max, false);
       let insured = false;
       if (natural === 0 && player.zeroInsure > 0) {
@@ -1126,7 +1129,7 @@ function doSkill(state, seat, action, events) {
         natural = 1;
       } else if (natural === 0) bust = true;
       const value = applyFace(player, insured ? 1 : natural);
-      faces.push({ natural: insured ? 0 : natural, value: insured ? value : value, insured });
+      faces.push({ natural: insured ? 0 : natural, value, insured });
       if (!bust) sum += value;
     }
     if (!bust) sum = consumeMod(player, sum);
@@ -1161,7 +1164,7 @@ function doSkill(state, seat, action, events) {
     const [min, max] = jobOf(player).dice;
     const faces = [];
     let sum = 0;
-    const diceN = sk.dice || 2;
+    const diceN = (sk.dice || 2) + (player.extraDice || 0);
     for (let i = 0; i < diceN; i++) {
       const natural = rollOne(state, min, max, false);
       const value = applyFace(player, natural);

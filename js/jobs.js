@@ -397,6 +397,21 @@ export function skillDescFor(player, sk) {
       const dmg = dmgBase + dmgPlus + perk(player, 'bladePlus');
       return `前後${rangeBase}マス以内で、HPが半分以下の相手に${markedNum(dmg, dmgBase)}ダメージ。この技で倒すと、自分の全CTが0に戻る。`;
     }
+    case 'charge': {
+      const diceBase = sk.dice || 2;
+      const dice = diceBase + (player.extraDice || 0);
+      return `${sk.behind || 6}マス以上後ろに誰かいるとき。基礎ダイス${markedNum(dice, diceBase)}個の合計だけ進み、通ったマイナスマスを壊す。この振った目が移動になり、ターンが終わる。`;
+    }
+    case 'allin': {
+      const diceBase = sk.dice || 3;
+      const dice = diceBase + (player.extraDice || 0);
+      return `最下位、またはHP30%以下のとき。ダイス${markedNum(dice, diceBase)}個の合計だけ進んでターン終了。1個でも0ならその場でダウン。`;
+    }
+    case 'overdrive': {
+      const diceBase = sk.dice || 2;
+      const dice = diceBase + (player.extraDice || 0);
+      return `2位以下のとき。基礎ダイス${markedNum(dice, diceBase)}個の合計だけ進み、通ったマイナスマスを壊す。ターン終了。`;
+    }
     case 'roulette': {
       const stepsBase = sk.steps || 3;
       const steps = perk(player, 'rouletteSteps') ? 4 : stepsBase;

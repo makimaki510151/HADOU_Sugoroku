@@ -8,7 +8,7 @@
  */
 export const UPGRADES = [
   // —— 永続・重ね ——
-  { id: 'dice_plus', name: '出目のクセ', blurb: 'この先、ダイス1個につき出目+1（永続・重ねて最大+2）', max: 2, grant: { type: 'stat', key: 'dicePlus', by: 1 } },
+  { id: 'dice_plus', name: '出目のクセ', blurb: 'この先、出目+1（ダイス1個ごと・永続・重ねて最大+2）', max: 2, grant: { type: 'stat', key: 'dicePlus', by: 1 } },
   { id: 'punch', name: 'ひと押し', blurb: '与えるダメージ+1（永続・重ねて最大+2）', max: 2, grant: { type: 'stat', key: 'dmgPlus', by: 1 } },
   { id: 'thick_skin', name: '厚皮', blurb: '受けるダメージを1減らす（永続・重ねて最大+2）', max: 2, grant: { type: 'stat', key: 'armor', by: 1 } },
   { id: 'trickle', name: 'じわ回復', blurb: '自分のターン開始時にHP+1（永続・1回まで）', max: 1, grant: { type: 'stat', key: 'regen', by: 1 } },
@@ -33,7 +33,7 @@ export const UPGRADES = [
   { id: 'espresso', name: '強めの一杯', blurb: '次に振るダイスの合計+3', grant: { type: 'mod', by: 3 } },
   { id: 'roar', name: '雄叫び', blurb: '次に振るダイスの合計+4', grant: { type: 'mod', by: 4 } },
   { id: 'calm', name: '深呼吸', blurb: '次の出目へのマイナス補正を打ち消す', need: 'penalty', grant: { type: 'clearPenalty' } },
-  { id: 'spare_die', name: '予備ダイス', blurb: 'このラウンド、振るダイスが1個増える', grant: { type: 'stat', key: 'extraDice', by: 1 } },
+  { id: 'spare_die', name: '予備ダイス', blurb: 'このラウンド、ダイス+1（振る個数が1増える）', grant: { type: 'stat', key: 'extraDice', by: 1 } },
 
   // —— ストック（消費後はまた出る） ——
   { id: 'omamori', name: 'お守り', blurb: '次に受けるダメージを1回無効', hold: { key: 'oneShotGuard', max: 1 }, grant: { type: 'flag', key: 'oneShotGuard' } },
