@@ -1,5 +1,5 @@
 /**
- * 波動すごろく — 純ルールエンジン（DOMなし）。
+ * 覇道すごろく — 純ルールエンジン（DOMなし）。
  * ホスト（とローカル）がこれを権威にする。ゲストは結果の状態を描くだけ。
  *
  * コースはマス1〜100（内部index 0〜99）。99に到達した瞬間勝ち。ぴったり不要。
@@ -55,6 +55,9 @@ export function badges(player) {
   if (player.koShield) b.push('根性');
   if (player.zeroInsure) b.push('ゼロ保険');
   if (player.dicePlus) b.push(`出目補正+${player.dicePlus}`);
+  if (player.armor) b.push(`軽減${player.armor}`);
+  if (player.regen) b.push(`回復${player.regen}`);
+  if (player.ultCut) b.push('必殺短縮');
   return b;
 }
 
@@ -101,8 +104,11 @@ function blankPlayer(raw, index) {
     pos: 0,
     ct: {},
     ctCut: 0,
+    ultCut: 0,
     dicePlus: 0,
     dmgPlus: 0,
+    armor: 0,
+    regen: 0,
     diceModNext: 0,
     floorRolls: 0,
     ironGuard: false,
@@ -151,7 +157,7 @@ export function createGame({ players, seed = 1, cpuLevel = 'normal' }) {
   state.turnIndex = 0;
   state.turn = state.turnOrder[0];
   const events = [];
-  events.push(pushLog(state, '波動スタート。100マス目に先に乗った人が勝ち', 'system'));
+  events.push(pushLog(state, '覇道スタート。100マス目に先に乗った人が勝ち', 'system'));
   events.push(pushLog(state, `手番は後ろの人から（${state.turnOrder.map((id) => state.players[id].name).join(' → ')}）`, 'system'));
   beginTurn(state, events);
   return { state, events };
@@ -176,6 +182,7 @@ function setCt(player, skillId) {
   if (!sk) return;
   let ct = sk.ct;
   if (sk.kind === 'active') ct = Math.max(1, ct - (player.ctCut || 0));
+  if (sk.kind === 'ult') ct = Math.max(1, ct - (player.ultCut || 0));
   player.ct[skillId] = ct;
 }
 
@@ -301,8 +308,9 @@ export function skillLockReason(state, seat, skillId) {
     if (n < (sk.need || 2)) return '自分の罠が2つ以上いる';
   }
   if (skillId === 'shadow') {
-    const ahead = nearestAhead(state, seat, sk.range || 6);
-    if (!ahead) return '6マス以内の前方に誰もいない';
+    const range = (sk.range || 6) + (player.perks.shadowRange || 0);
+    const ahead = nearestAhead(state, seat, range);
+    if (!ahead) return `${range}マス以内の前方に誰もいない`;
     if (ahead.ironGuard) return `${ahead.name} はガード中`;
   }
   if (skillId === 'execute') {
@@ -325,7 +333,7 @@ export function skillLockReason(state, seat, skillId) {
   if (skillId === 'curse' && curseTiles(state, seat).length === 0) {
     return '前に置けるマスがない';
   }
-  if (skillId === 'boost' && boostTiles(state, seat, sk.range || 5).length === 0) {
+  if (skillId === 'boost' && boostTiles(state, seat, (sk.range || 5) + (player.perks.boostRange || 0)).length === 0) {
     return '前に置ける空マスがない';
   }
   if (skillId === 'pull' && playersInRange(state, seat, sk.range || 6).length === 0) {
@@ -368,7 +376,7 @@ export function listActions(state, seat) {
       continue;
     }
     if (sk.id === 'boost') {
-      for (const tile of boostTiles(state, seat, sk.range || 5)) {
+      for (const tile of boostTiles(state, seat, (sk.range || 5) + (cur.perks.boostRange || 0))) {
         actions.push({ type: 'skill', id: 'boost', tile });
       }
       continue;
@@ -419,7 +427,8 @@ function hurt(state, targetSeat, amount, srcSeat, events, reason) {
     events.push(pushLog(state, `${target.name} はガードで受け流した`, 'good'));
     return { dealt: 0, killed: false, blocked: true };
   }
-  const dmg = Math.max(0, amount | 0);
+  let dmg = Math.max(0, amount | 0);
+  if (dmg > 0 && (target.armor || 0) > 0) dmg = Math.max(0, dmg - target.armor);
   if (dmg <= 0 || target.hp <= 0) return { dealt: 0, killed: false, blocked: false };
   if (target.oneShotGuard) {
     target.oneShotGuard = false;
@@ -480,8 +489,9 @@ function maybeAssassin(state, seat, events, chain) {
   const dmg = power(player, jobOf(player).passive.damage || 3, 'bladePlus');
   for (const o of sharing) hurt(state, o.id, dmg, seat, events, 'footwork');
   if (player.downed || state.phase === 'gameover') return;
-  events.push(pushLog(state, `${player.name} の歩法。刺して2マス滑る`, 'skill'));
-  moveBy(state, seat, jobOf(player).passive.bonus || 2, events, { chain: chain + 1 });
+  const slip = (jobOf(player).passive.bonus || 2) + (player.perks.footBonus || 0);
+  events.push(pushLog(state, `${player.name} の歩法。刺して${slip}マス滑る`, 'skill'));
+  moveBy(state, seat, slip, events, { chain: chain + 1 });
 }
 
 function enterTile(state, seat, pos, events, opts) {
@@ -653,16 +663,20 @@ function beginTurn(state, events) {
     player.hp = player.maxHp;
     let bonus = 0;
     if (player.job === 'vanguard') {
-      bonus = jobOf(player).passive.bonus || 3;
+      bonus = (jobOf(player).passive.bonus || 3) + (player.perks.spiritPlus || 0);
       player.diceModNext += bonus;
     }
     events.push({ t: 'revive', seat: player.id, hp: player.hp, bonus });
     const extra = bonus ? ` 出目+${bonus}` : '';
     events.push(pushLog(state, `${player.name} が復帰（HP${player.hp}）${extra}`, 'good'));
   }
+  if ((player.regen || 0) > 0 && !player.downed && player.hp > 0) {
+    const got = heal(state, player.id, player.regen, events, 'regen');
+    if (got) events.push(pushLog(state, `${player.name} のじわ回復 +${got}`, 'good'));
+  }
   if (player.job === 'magnet' && !player.downed && player.hp > 0) {
     const aura = jobOf(player).passive;
-    const range = aura.range || 2;
+    const range = (aura.range || 2) + (player.perks.fieldRange || 0);
     const dmg = (aura.damage || 1) + (player.perks.fieldPlus || 0);
     for (const o of state.players) {
       if (o.id === player.id || o.finished || o.hp <= 0) continue;
@@ -739,28 +753,29 @@ function applyUpgrade(state, seat, upgradeId, events) {
   const up = upgradeById(upgradeId);
   if (!up) return;
   player.perks[upgradeId] = (player.perks[upgradeId] || 0) + 1;
-  if (upgradeId === 'dice_plus') player.dicePlus += 1;
-  else if (upgradeId === 'hp_up') {
-    player.maxHp += 2;
-    if (!player.downed && player.hp > 0) player.hp = Math.min(player.maxHp, player.hp + 2);
-  } else if (upgradeId === 'candy') {
-    heal(state, seat, 4, events, 'candy');
-  } else if (upgradeId === 'shortcut') {
-    moveBy(state, seat, 3, events, {});
-  } else if (upgradeId === 'ct_cut') player.ctCut += 1;
-  else if (upgradeId === 'punch') player.dmgPlus += 1;
-  else if (upgradeId === 'cheer') player.diceModNext += 2;
-  else if (upgradeId === 'omamori') player.oneShotGuard = true;
-  else if (upgradeId === 'watchstep') player.trapIgnore += 1;
-  else if (upgradeId === 'sticky_trap') player.stickyTrap = (player.stickyTrap || 0) + 1;
-  else if (upgradeId === 'floor') player.floorRolls += 3;
-  else if (upgradeId === 'guts') player.koShield = true;
-  else if (upgradeId === 'dash_plus') player.perks.dashPlus = (player.perks.dashPlus || 0) + 1;
-  else if (upgradeId === 'spike_plus') player.perks.spikePlus = (player.perks.spikePlus || 0) + 1;
-  else if (upgradeId === 'blade_plus') player.perks.bladePlus = (player.perks.bladePlus || 0) + 1;
-  else if (upgradeId === 'field_plus') player.perks.fieldPlus = 1;
-  else if (upgradeId === 'sprint_plus') player.perks.sprintPlus = 1;
-  else if (upgradeId === 'zero_guard') player.zeroInsure += 1;
+  const g = up.grant || {};
+  if (g.type === 'stat') {
+    player[g.key] = (player[g.key] || 0) + (g.by || 1);
+  } else if (g.type === 'hpUp') {
+    player.maxHp += g.max || 0;
+    if ((g.heal || 0) > 0 && !player.downed && player.hp > 0) {
+      player.hp = Math.min(player.maxHp, player.hp + g.heal);
+    }
+  } else if (g.type === 'heal') {
+    heal(state, seat, g.amount || 0, events, upgradeId);
+  } else if (g.type === 'move') {
+    moveBy(state, seat, g.steps || 0, events, {});
+  } else if (g.type === 'mod') {
+    player.diceModNext = (player.diceModNext || 0) + (g.by || 0);
+  } else if (g.type === 'clearPenalty') {
+    if ((player.diceModNext || 0) < 0) player.diceModNext = 0;
+  } else if (g.type === 'flag') {
+    player[g.key] = true;
+  } else if (g.type === 'stock') {
+    player[g.key] = (player[g.key] || 0) + (g.by || 1);
+  } else if (g.type === 'perk') {
+    player.perks[g.key] = (player.perks[g.key] || 0) + (g.by || 1);
+  }
   events.push({ t: 'upgrade', seat, upgradeId });
   events.push(pushLog(state, `${player.name} は「${up.name}」を掴んだ`, 'good'));
 }
@@ -843,7 +858,7 @@ function doRoll(state, seat, events) {
   events.push({ t: 'dice', seat, faces, total: sum, loaded, kind: 'roll' });
   if (zeros > 0 && player.job === 'gambler') {
     player.stats.zeros += zeros;
-    const healEach = job.passive.heal || 2;
+    const healEach = (job.passive.heal || 2) + (player.perks.zeroHeal || 0);
     for (let z = 0; z < zeros; z++) {
       heal(state, seat, healEach, events, 'luck');
       for (const sk of job.skills) {
@@ -863,7 +878,7 @@ function doRoll(state, seat, events) {
     && state.phase !== 'gameover'
     && faces.some((f) => f.natural === (job.passive.face || 7))
   ) {
-    const bonus = job.passive.bonus || 2;
+    const bonus = (job.passive.bonus || 2) + (player.perks.stridePlus || 0);
     events.push(pushLog(state, `${player.name} のストライド +${bonus}`, 'good'));
     moveBy(state, seat, bonus, events, {});
   }
@@ -902,7 +917,8 @@ function doSkill(state, seat, action, events) {
     const tiles = curseTiles(state, seat);
     if (!tiles.includes(action.tile)) return 'そこには置けない';
     const durable = consumeStickyTrap(player);
-    state.tiles[action.tile] = { kind: 'curse', owner: seat, back: sk.back || 2, hidden: false, durable };
+    const back = (sk.back || 2) + (player.perks.cursePlus || 0);
+    state.tiles[action.tile] = { kind: 'curse', owner: seat, back, hidden: false, durable };
     player.stats.traps += 1;
     setCt(player, id);
     events.push({ t: 'place', seat, tile: action.tile, kind: 'curse', durable });
@@ -914,10 +930,13 @@ function doSkill(state, seat, action, events) {
     return '';
   }
   if (id === 'boost') {
-    const tiles = boostTiles(state, seat, sk.range || 5);
+    const tiles = boostTiles(state, seat, (sk.range || 5) + (player.perks.boostRange || 0));
     if (!tiles.includes(action.tile)) return 'そこには置けない';
     state.tiles[action.tile] = {
-      kind: 'boost', owner: seat, steps: sk.steps || 3, hidden: false,
+      kind: 'boost',
+      owner: seat,
+      steps: (sk.steps || 3) + (player.perks.boostPlus || 0),
+      hidden: false,
     };
     player.stats.traps += 1;
     setCt(player, id);
@@ -932,13 +951,14 @@ function doSkill(state, seat, action, events) {
     setCt(player, id);
     const dmg = power(player, sk.damage || 3, 'bladePlus');
     const hit = hurt(state, target.id, dmg, seat, events, 'poison');
-    if (!hit.blocked) target.diceModNext -= sk.penalty || 2;
+    const pen = (sk.penalty || 2) + (player.perks.poisonPen || 0);
+    if (!hit.blocked) target.diceModNext -= pen;
     events.push({ t: 'skill', seat, id, target: target.id });
     events.push(pushLog(
       state,
       hit.blocked
         ? `${player.name} の毒刃は${target.name}に弾かれた`
-        : `${player.name} の毒刃 → ${target.name}。次の出目-2`,
+        : `${player.name} の毒刃 → ${target.name}。次の出目-${pen}`,
       'skill',
     ));
     return '';
@@ -962,7 +982,7 @@ function doSkill(state, seat, action, events) {
     return '';
   }
   if (id === 'shadow') {
-    const target = nearestAhead(state, seat, sk.range || 6);
+    const target = nearestAhead(state, seat, (sk.range || 6) + (player.perks.shadowRange || 0));
     if (!target) return '入れ替わる相手がいない';
     if (target.ironGuard) return `${target.name} はガード中で入れ替えられない`;
     setCt(player, id);
@@ -979,6 +999,9 @@ function doSkill(state, seat, action, events) {
   if (id === 'guard') {
     setCt(player, id);
     player.ironGuard = true;
+    if ((player.perks.guardHeal || 0) > 0) {
+      heal(state, seat, player.perks.guardHeal, events, 'guard');
+    }
     events.push({ t: 'skill', seat, id });
     events.push(pushLog(state, `${player.name} はアイアンガード`, 'skill'));
     return '';
@@ -994,7 +1017,8 @@ function doSkill(state, seat, action, events) {
     setCt(player, id);
     events.push({ t: 'skill', seat, id });
     events.push(pushLog(state, `${player.name} のダッシュ！`, 'skill'));
-    moveBy(state, seat, sk.steps || 3, events, { overtakeDamage: sk.damage || 3 });
+    const dashSteps = player.perks.dashSteps ? 4 : (sk.steps || 3);
+    moveBy(state, seat, dashSteps, events, { overtakeDamage: sk.damage || 3 });
     finishSkillTurn(state, player, events);
     return '';
   }
@@ -1003,7 +1027,7 @@ function doSkill(state, seat, action, events) {
     const idx = pullInt(state, 0, state.players.length - 1);
     const target = state.players[Math.max(0, Math.min(state.players.length - 1, idx))];
     const forward = pullInt(state, 0, 1) === 1;
-    const steps = sk.steps || 3;
+    const steps = player.perks.rouletteSteps ? 4 : (sk.steps || 3);
     events.push({ t: 'roulette', seat, target: target.id, forward, steps });
     if (target.ironGuard) {
       events.push({ t: 'block', seat: target.id, reason: 'guard' });
@@ -1034,7 +1058,7 @@ function doSkill(state, seat, action, events) {
     }
     events.push({ t: 'boom', seat, tiles: traps.slice(), hits: [...hits.keys()] });
     events.push(pushLog(state, `${player.name} が罠を全部起爆！`, 'ult'));
-    const dmg = (sk.damage || 4) + (player.dmgPlus || 0);
+    const dmg = (sk.damage || 4) + (player.dmgPlus || 0) + (player.perks.boomPlus || 0);
     for (const [idHit, n] of hits) {
       for (let k = 0; k < n; k++) {
         const res = hurt(state, idHit, dmg, seat, events, 'boom');
@@ -1141,7 +1165,8 @@ function doSkill(state, seat, action, events) {
       events.push(pushLog(state, `${player.name} の引き寄せは${target.name}のガードに弾かれた`, 'skill'));
       return '';
     }
-    const steps = Math.min(sk.steps || 3, Math.abs(target.pos - player.pos));
+    const pullMax = (sk.steps || 3) + (player.perks.pullPlus || 0);
+    const steps = Math.min(pullMax, Math.abs(target.pos - player.pos));
     const delta = target.pos > player.pos ? -steps : steps;
     events.push(pushLog(state, `${player.name} が${target.name}を引き寄せた`, 'skill'));
     if (steps > 0) moveBy(state, target.id, delta, events, {});
@@ -1157,7 +1182,7 @@ function doSkill(state, seat, action, events) {
       events.push(pushLog(state, `${player.name} の弾き飛ばしは${target.name}のガードに弾かれた`, 'skill'));
       return '';
     }
-    const steps = sk.steps || 3;
+    const steps = (sk.steps || 3) + (player.perks.pushPlus || 0);
     const delta = target.pos >= player.pos ? steps : -steps;
     events.push(pushLog(state, `${player.name} が${target.name}を弾き飛ばした`, 'skill'));
     moveBy(state, target.id, delta, events, {});

@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <title>波動すごろく</title>
+  <title>覇道すごろく</title>
   <meta name="description" content="職を選んで100マスを競う、P2Pの一本道すごろく" />
   <meta name="theme-color" content="#ffc53d" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -22,8 +22,8 @@
     </div>
     <div class="title-brand">
       <p class="brand-eyebrow">P2P SKILL RACE</p>
-      <h1 class="brand-mark">波動すごろく</h1>
-      <p class="brand-sub">職を握って、100マスをぶち抜け。お金はない。あるのはHPと、うっとうしいスキル。</p>
+      <h1 class="brand-mark">覇道すごろく</h1>
+      <p class="brand-sub">職を握って、100マスをぶち抜け。</p>
       <p class="brand-version" id="app-version-label">v—</p>
     </div>
     <div class="title-actions">
@@ -183,7 +183,7 @@
 
   <section id="screen-game" class="screen">
     <header class="topbar">
-      <span class="brand-mini">波動</span>
+      <span class="brand-mini">覇道</span>
       <div class="topbar-meta">
         <span class="chip" id="round-chip">R1</span>
         <span class="chip" id="turn-chip">手番</span>
@@ -216,8 +216,10 @@
         </div>
       </div>
       <aside class="hud" id="hud">
-        <div id="players-panel"></div>
-        <div id="skills-panel"></div>
+        <div class="hud-main">
+          <div id="players-panel"></div>
+          <div id="skills-panel"></div>
+        </div>
         <div class="controls">
           <button class="btn yolk large roll-btn" id="btn-roll" type="button">ダイスを振る</button>
           <button class="btn yolk large" id="btn-draft-open" type="button" hidden>強化を選ぶ</button>
@@ -248,7 +250,7 @@
       <p id="winner-sub"></p>
       <div id="results-body"></div>
       <div class="results-actions">
-        <button class="btn" id="btn-export" type="button">結果JSON</button>
+        <button class="btn" id="btn-export" type="button">結果をPNG</button>
         <button class="btn primary large" id="btn-again" type="button">タイトルへ</button>
       </div>
     </div>
