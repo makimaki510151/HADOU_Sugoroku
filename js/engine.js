@@ -460,7 +460,7 @@ function maybeAssassin(state, seat, events, chain) {
   if (state.phase === 'gameover' || player.pos >= GOAL) return;
   const sharing = state.players.filter((o) => o.id !== seat && o.pos === player.pos);
   if (!sharing.length) return;
-  const dmg = power(player, jobOf(player).passive.damage || 6, 'bladePlus');
+  const dmg = power(player, jobOf(player).passive.damage || 3, 'bladePlus');
   for (const o of sharing) hurt(state, o.id, dmg, seat, events, 'footwork');
   if (player.downed || state.phase === 'gameover') return;
   events.push(pushLog(state, `${player.name} の歩法。刺して2マス滑る`, 'skill'));
@@ -508,13 +508,13 @@ function enterTile(state, seat, pos, events, opts) {
   if (tile.kind === 'spike') {
     events.push({ t: 'spring', kind: 'spike', seat, pos });
     events.push(pushLog(state, `${player.name} が${pos + 1}マスのスパイクを踏んだ`, 'bad'));
-    hurt(state, seat, tile.damage || 6, tile.owner, events, 'spike');
+    hurt(state, seat, tile.damage || 3, tile.owner, events, 'spike');
     return true;
   }
   if (tile.kind === 'curse') {
     events.push({ t: 'spring', kind: 'curse', seat, pos });
     events.push(pushLog(state, `${player.name} は${pos + 1}マスの呪印で戻される`, 'bad'));
-    knockback(state, seat, tile.back || 3, events);
+    knockback(state, seat, tile.back || 2, events);
     return true;
   }
   return false;
@@ -623,7 +623,7 @@ function beginTurn(state, events) {
   if (player.job === 'magnet' && !player.downed && player.hp > 0) {
     const aura = jobOf(player).passive;
     const range = aura.range || 2;
-    const dmg = (aura.damage || 2) + (player.perks.fieldPlus || 0);
+    const dmg = (aura.damage || 1) + (player.perks.fieldPlus || 0);
     for (const o of state.players) {
       if (o.id === player.id || o.finished || o.hp <= 0) continue;
       if (Math.abs(o.pos - player.pos) <= range && Math.abs(o.pos - player.pos) > 0) {
@@ -689,22 +689,22 @@ function applyUpgrade(state, seat, upgradeId, events) {
   player.perks[upgradeId] = (player.perks[upgradeId] || 0) + 1;
   if (upgradeId === 'dice_plus') player.dicePlus += 1;
   else if (upgradeId === 'hp_up') {
-    player.maxHp += 4;
-    if (!player.downed && player.hp > 0) player.hp = Math.min(player.maxHp, player.hp + 4);
+    player.maxHp += 2;
+    if (!player.downed && player.hp > 0) player.hp = Math.min(player.maxHp, player.hp + 2);
   } else if (upgradeId === 'candy') {
-    heal(state, seat, 8, events, 'candy');
+    heal(state, seat, 4, events, 'candy');
   } else if (upgradeId === 'shortcut') {
     moveBy(state, seat, 3, events, {});
   } else if (upgradeId === 'ct_cut') player.ctCut += 1;
-  else if (upgradeId === 'punch') player.dmgPlus += 2;
+  else if (upgradeId === 'punch') player.dmgPlus += 1;
   else if (upgradeId === 'cheer') player.diceModNext += 2;
   else if (upgradeId === 'omamori') player.oneShotGuard = true;
   else if (upgradeId === 'watchstep') player.trapIgnore += 1;
   else if (upgradeId === 'floor') player.floorRolls += 3;
   else if (upgradeId === 'guts') player.koShield = true;
-  else if (upgradeId === 'dash_plus') player.perks.dashPlus = (player.perks.dashPlus || 0) + 3;
-  else if (upgradeId === 'spike_plus') player.perks.spikePlus = (player.perks.spikePlus || 0) + 3;
-  else if (upgradeId === 'blade_plus') player.perks.bladePlus = (player.perks.bladePlus || 0) + 3;
+  else if (upgradeId === 'dash_plus') player.perks.dashPlus = (player.perks.dashPlus || 0) + 1;
+  else if (upgradeId === 'spike_plus') player.perks.spikePlus = (player.perks.spikePlus || 0) + 1;
+  else if (upgradeId === 'blade_plus') player.perks.bladePlus = (player.perks.bladePlus || 0) + 1;
   else if (upgradeId === 'field_plus') player.perks.fieldPlus = 1;
   else if (upgradeId === 'sprint_plus') player.perks.sprintPlus = 1;
   else if (upgradeId === 'zero_guard') player.zeroInsure += 1;
@@ -790,7 +790,7 @@ function doRoll(state, seat, events) {
   events.push({ t: 'dice', seat, faces, total: sum, loaded, kind: 'roll' });
   if (zeros > 0 && player.job === 'gambler') {
     player.stats.zeros += zeros;
-    const healEach = job.passive.heal || 4;
+    const healEach = job.passive.heal || 2;
     for (let z = 0; z < zeros; z++) {
       heal(state, seat, healEach, events, 'luck');
       for (const sk of job.skills) {
@@ -832,7 +832,7 @@ function doSkill(state, seat, action, events) {
   if (id === 'spike') {
     const tiles = spikeTiles(state, seat);
     if (!tiles.includes(action.tile)) return 'そこには置けない';
-    const damage = (sk.damage || 6) + (player.dmgPlus || 0) + (player.perks.spikePlus || 0);
+    const damage = (sk.damage || 3) + (player.dmgPlus || 0) + (player.perks.spikePlus || 0);
     state.tiles[action.tile] = { kind: 'spike', owner: seat, damage, hidden: false };
     player.stats.traps += 1;
     setCt(player, id);
@@ -843,7 +843,7 @@ function doSkill(state, seat, action, events) {
   if (id === 'curse') {
     const tiles = curseTiles(state, seat);
     if (!tiles.includes(action.tile)) return 'そこには置けない';
-    state.tiles[action.tile] = { kind: 'curse', owner: seat, back: sk.back || 3, hidden: false };
+    state.tiles[action.tile] = { kind: 'curse', owner: seat, back: sk.back || 2, hidden: false };
     player.stats.traps += 1;
     setCt(player, id);
     events.push({ t: 'place', seat, tile: action.tile, kind: 'curse' });
@@ -867,7 +867,7 @@ function doSkill(state, seat, action, events) {
     const target = state.players[action.target];
     if (!target || !targets.includes(target)) return 'その相手には届かない';
     setCt(player, id);
-    const dmg = power(player, sk.damage || 6, 'bladePlus');
+    const dmg = power(player, sk.damage || 3, 'bladePlus');
     const hit = hurt(state, target.id, dmg, seat, events, 'poison');
     if (!hit.blocked) target.diceModNext -= sk.penalty || 2;
     events.push({ t: 'skill', seat, id, target: target.id });
@@ -885,7 +885,7 @@ function doSkill(state, seat, action, events) {
     if (!target || target.id === seat || target.hp <= 0) return '対象がいない';
     if (target.hp / target.maxHp > (sk.hpRate || 0.5)) return 'まだHPが半分より上';
     setCt(player, id);
-    const dmg = power(player, sk.damage || 14, 'bladePlus');
+    const dmg = power(player, sk.damage || 6, 'bladePlus');
     const res = hurt(state, target.id, dmg, seat, events, 'execute');
     events.push({ t: 'skill', seat, id, target: target.id, ult: true });
     if (res.killed) {
@@ -929,7 +929,7 @@ function doSkill(state, seat, action, events) {
     setCt(player, id);
     events.push({ t: 'skill', seat, id });
     events.push(pushLog(state, `${player.name} のダッシュ！`, 'skill'));
-    moveBy(state, seat, sk.steps || 3, events, { overtakeDamage: sk.damage || 5 });
+    moveBy(state, seat, sk.steps || 3, events, { overtakeDamage: sk.damage || 3 });
     finishSkillTurn(state, player, events);
     return '';
   }
@@ -938,7 +938,7 @@ function doSkill(state, seat, action, events) {
     const idx = pullInt(state, 0, state.players.length - 1);
     const target = state.players[Math.max(0, Math.min(state.players.length - 1, idx))];
     const forward = pullInt(state, 0, 1) === 1;
-    const steps = sk.steps || 4;
+    const steps = sk.steps || 3;
     events.push({ t: 'roulette', seat, target: target.id, forward, steps });
     if (target.ironGuard) {
       events.push({ t: 'block', seat: target.id, reason: 'guard' });
@@ -969,7 +969,7 @@ function doSkill(state, seat, action, events) {
     }
     events.push({ t: 'boom', seat, tiles: traps.slice(), hits: [...hits.keys()] });
     events.push(pushLog(state, `${player.name} が罠を全部起爆！`, 'ult'));
-    const dmg = (sk.damage || 9) + (player.dmgPlus || 0);
+    const dmg = (sk.damage || 4) + (player.dmgPlus || 0);
     for (const [idHit, n] of hits) {
       for (let k = 0; k < n; k++) {
         const res = hurt(state, idHit, dmg, seat, events, 'boom');

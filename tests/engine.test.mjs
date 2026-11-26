@@ -58,7 +58,7 @@ describe('ヴァンガード', () => {
     const res = act(s, 0, { type: 'skill', id: 'dash' });
     assert.equal(res.ok, true);
     assert.equal(s.players[0].pos, 3);
-    assert.equal(s.players[1].hp, s.players[1].maxHp - 5);
+    assert.equal(s.players[1].hp, s.players[1].maxHp - 3);
     assert.equal(s.players[0].ct.dash, 2);
     assert.equal(s.phase, 'act');
     assert.equal(s.turn, 0);
@@ -82,11 +82,11 @@ describe('ヴァンガード', () => {
     assert.equal(s.players[0].hp, s.players[0].maxHp - 6);
   });
 
-  it('呪印は3マス戻して移動を打ち切る', () => {
+  it('呪印は戻して移動を打ち切る', () => {
     const s = setup(['vanguard', 'trap']);
-    s.tiles[3] = { kind: 'curse', owner: 1, back: 3 };
+    s.tiles[3] = { kind: 'curse', owner: 1, back: 2 };
     act(s, 0, { type: 'roll' }, [4]);
-    assert.equal(s.players[0].pos, 0);
+    assert.equal(s.players[0].pos, 1);
     assert.equal(s.players[0].hp, s.players[0].maxHp);
   });
 
@@ -140,16 +140,16 @@ describe('トラップマスター', () => {
     s.tiles[1] = { kind: 'spike', owner: 0, damage: 6 };
     act(s, 0, { type: 'roll' }, [1]);
     assert.equal(s.players[0].pos, 1);
-    assert.equal(s.players[0].hp, 8);
+    assert.equal(s.players[0].hp, 7);
   });
 
   it('他人の罠は普通に刺さる', () => {
     const s = setup(['trap', 'vanguard']);
     s.players[0].hp = 10;
-    s.tiles[1] = { kind: 'spike', owner: 1, damage: 6 };
+    s.tiles[1] = { kind: 'spike', owner: 1, damage: 3 };
     act(s, 0, { type: 'roll' }, [3]);
     assert.equal(s.players[0].pos, 1);
-    assert.equal(s.players[0].hp, 4);
+    assert.equal(s.players[0].hp, 7);
   });
 
   it('スパイクは後ろ3マスの空マスだけ', () => {
@@ -171,7 +171,7 @@ describe('トラップマスター', () => {
     s.players[1].pos = 5;
     const res = act(s, 0, { type: 'skill', id: 'pandemonium' });
     assert.equal(res.ok, true);
-    assert.equal(s.players[1].hp, s.players[1].maxHp - 18);
+    assert.equal(s.players[1].hp, s.players[1].maxHp - 8);
     assert.equal(s.players[1].pos, 3);
     assert.equal(s.tiles[4], null);
     assert.equal(s.tiles[6], null);
@@ -191,7 +191,7 @@ describe('アサシン', () => {
     s.players[1].pos = 3;
     act(s, 0, { type: 'roll' }, [3]);
     assert.equal(s.players[0].pos, 5);
-    assert.equal(s.players[1].hp, s.players[1].maxHp - 6);
+    assert.equal(s.players[1].hp, s.players[1].maxHp - 3);
   });
 
   it('ガードされても歩法の前進は残る', () => {
@@ -248,7 +248,7 @@ describe('アサシン', () => {
   it('毒刃はダメージと次の出目-2', () => {
     const s = setup(['assassin', 'vanguard']);
     act(s, 0, { type: 'skill', id: 'poison', target: 1 });
-    assert.equal(s.players[1].hp, s.players[1].maxHp - 6);
+    assert.equal(s.players[1].hp, s.players[1].maxHp - 3);
     assert.equal(s.players[1].diceModNext, -2);
     act(s, 0, { type: 'roll' }, [2]);
     act(s, 1, { type: 'roll' }, [3]);
@@ -265,7 +265,7 @@ describe('ギャンブラー', () => {
     s.players[0].ct.roulette = 1;
     act(s, 0, { type: 'roll' }, [0]);
     assert.equal(s.players[0].pos, 0);
-    assert.equal(s.players[0].hp, 8);
+    assert.equal(s.players[0].hp, 6);
     assert.equal(s.players[0].ct.loaded, 1);
     assert.equal(s.players[0].ct.roulette, 0);
     assert.equal(s.players[0].stats.zeros, 1);
@@ -476,6 +476,6 @@ describe('マグネットとランナー', () => {
       act(s, seat, { type: 'draft', upgradeId: s.drafts.offers[seat][0] });
     }
     assert.equal(s.turn, 0);
-    assert.equal(s.players[1].hp, s.players[1].maxHp - 2);
+    assert.equal(s.players[1].hp, s.players[1].maxHp - 1);
   });
 });
