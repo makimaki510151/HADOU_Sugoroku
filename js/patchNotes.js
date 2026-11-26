@@ -4,6 +4,13 @@
  */
 export const PATCH_NOTES = [
   {
+    version: '1.6.3',
+    date: '2026-11-26',
+    items: [
+      'ダイス演出で個数・各出目・合計・何マス進むかをはっきり見せるようにした',
+    ],
+  },
+  {
     version: '1.6.1',
     date: '2026-11-26',
     items: [

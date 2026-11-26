@@ -202,8 +202,10 @@
         <p id="inspect" class="inspect">マスをタップすると中身が出る</p>
         <div id="dice-overlay" hidden>
           <div class="dice-stage">
-            <div id="dice-faces">?</div>
-            <div id="dice-label">サイコロ</div>
+            <p id="dice-kicker" class="dice-kicker">ダイス</p>
+            <div id="dice-faces" class="dice-faces" aria-live="polite"></div>
+            <p id="dice-math" class="dice-math"></p>
+            <p id="dice-label" class="dice-label">サイコロ</p>
           </div>
         </div>
         <div id="event-flash" hidden role="dialog" aria-modal="true">

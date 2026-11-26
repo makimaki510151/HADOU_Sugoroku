@@ -612,24 +612,68 @@ function flash(kicker, title, detail) {
   });
 }
 
+function diceKindLabel(kind) {
+  if (kind === 'charge') return '突撃';
+  if (kind === 'allin') return 'オールイン';
+  if (kind === 'overdrive') return 'オーバーラン';
+  if (kind === 'roll') return '通常ダイス';
+  return 'ダイス';
+}
+
+function diceMoveLabel(e) {
+  if (e.bust) return '0が出た → その場でダウン';
+  const n = e.total | 0;
+  if (e.kind === 'charge') return `合計 ${n} → ${n}マス進む（突撃）`;
+  if (e.kind === 'allin') return `合計 ${n} → ${n}マス進む（オールイン）`;
+  if (e.kind === 'overdrive') return `合計 ${n} → ${n}マス進む（オーバーラン）`;
+  if (n === 0) return '合計 0 → その場で足踏み';
+  return `合計 ${n} → ${n}マス進む`;
+}
+
+/** 個数・各出目・合計・何マス進むをはっきり見せる */
+async function playDiceOverlay(e) {
+  audio.sfx.dice();
+  const overlay = $('#dice-overlay');
+  const facesEl = $('#dice-faces');
+  const kicker = $('#dice-kicker');
+  const mathEl = $('#dice-math');
+  const label = $('#dice-label');
+  const count = e.faces?.length || 0;
+  overlay.hidden = false;
+  kicker.textContent = `${diceKindLabel(e.kind)} · ${count}個`;
+  mathEl.textContent = '';
+  label.textContent = '振っている…';
+  facesEl.innerHTML = e.faces.map(() => '<span class="die spinning">?</span>').join('');
+  const diceNodes = [...facesEl.querySelectorAll('.die')];
+  const spin = setInterval(() => {
+    diceNodes.forEach((node) => {
+      node.textContent = String(Math.floor(Math.random() * 9));
+    });
+  }, 70);
+  await wait(560);
+  clearInterval(spin);
+  diceNodes.forEach((node, i) => {
+    const face = e.faces[i];
+    node.classList.remove('spinning');
+    node.classList.add('landed');
+    if (e.bust && (face?.natural === 0 || face?.value === 0)) node.classList.add('bust');
+    node.textContent = String(face?.value ?? '?');
+  });
+  const parts = e.faces.map((f) => String(f.value));
+  mathEl.textContent = e.bust
+    ? `${parts.join(' + ')} → 失敗`
+    : (parts.length > 1 ? `${parts.join(' + ')} = ${e.total}` : `出目 ${e.total}`);
+  label.textContent = diceMoveLabel(e);
+  audio.sfx.diceLand(e.faces[0]?.value || 1);
+  await wait(720);
+  overlay.hidden = true;
+}
+
 async function playEvent(e) {
   const g = app.game;
   const name = (id) => g?.players?.[id]?.name || '';
   if (e.t === 'dice') {
-    audio.sfx.dice();
-    const overlay = $('#dice-overlay');
-    const faces = $('#dice-faces');
-    overlay.hidden = false;
-    const spin = setInterval(() => {
-      faces.textContent = e.faces.map(() => Math.floor(Math.random() * 9)).join(' ');
-    }, 70);
-    await wait(520);
-    clearInterval(spin);
-    faces.textContent = e.faces.map((f) => f.value).join(' ');
-    $('#dice-label').textContent = e.bust ? '0が出た' : (e.kind === 'charge' ? '突撃' : e.kind === 'allin' ? 'オールイン' : `合計 ${e.total}`);
-    audio.sfx.diceLand(e.faces[0]?.value || 1);
-    await wait(420);
-    overlay.hidden = true;
+    await playDiceOverlay(e);
     return;
   }
   if (e.t === 'step') {
