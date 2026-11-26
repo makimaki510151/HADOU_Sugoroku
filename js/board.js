@@ -86,6 +86,7 @@ function trapMark(tile) {
  *   viewW: number,
  *   viewH: number,
  *   displayPos?: Record<number, number>,
+ *   turnSeat?: number|null,
  *   highlight?: Set<number>|number[],
  *   inspect?: number|null,
  *   time?: number,
@@ -163,7 +164,8 @@ export function drawBoard(ctx, opts) {
   ctx.strokeStyle = '#221814';
   ctx.stroke();
 
-  const current = state?.players?.[state.turn];
+  const turnSeat = opts.turnSeat != null ? opts.turnSeat : state?.turn;
+  const current = state?.players?.[turnSeat];
 
   for (let i = 0; i < 100; i++) {
     const r = tileRect(i);

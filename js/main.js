@@ -45,6 +45,8 @@ const app = {
   cam: createCamera(),
   userCam: false,
   displayPos: null,
+  /** 演出中に見せる手番。state.turn は先に進むので、turn イベントまでここを使う */
+  turnMarkSeat: null,
   queue: [],
   inbox: [],
   busy: false,
@@ -100,6 +102,7 @@ function returnToTitle() {
   app.mode = null;
   app.busy = false;
   app.pumping = false;
+  app.turnMarkSeat = null;
   app.queue = [];
   app.inbox = [];
   app.targeting = null;
@@ -389,12 +392,43 @@ function myTurn() {
   });
 }
 
+/** HUD・盤の手番マーク用。演出中は turn イベントまで動かさない */
+function markedTurnPlayer() {
+  const g = app.game;
+  if (!g) return null;
+  if (app.busy && app.turnMarkSeat != null && g.players[app.turnMarkSeat]) {
+    return g.players[app.turnMarkSeat];
+  }
+  return currentPlayer(g);
+}
+
+function actorSeatFromEvents(events) {
+  for (const e of events || []) {
+    if (e?.t === 'turn') break;
+    if (e?.seat == null) continue;
+    if (['dice', 'step', 'skill', 'place', 'rest', 'revive', 'boom', 'roulette', 'win', 'ko'].includes(e.t)) {
+      return e.seat;
+    }
+  }
+  return null;
+}
+
 function renderHud() {
   const g = app.game;
   if (!g) return;
-  const cur = currentPlayer(g);
+  const cur = markedTurnPlayer();
+  const sysCur = currentPlayer(g);
   $('#round-chip').textContent = `R${g.round}`;
-  $('#turn-chip').textContent = g.phase === 'draft' ? '強化' : g.phase === 'gameover' ? '終了' : `${cur?.name || ''}の番`;
+  // 演出中（移動・罠など）は phase が先に draft/次手番へ進んでいても、マークは動かさない
+  if (app.busy && cur) {
+    $('#turn-chip').textContent = `${cur.name}の番`;
+  } else if (g.phase === 'draft') {
+    $('#turn-chip').textContent = '強化';
+  } else if (g.phase === 'gameover') {
+    $('#turn-chip').textContent = '終了';
+  } else {
+    $('#turn-chip').textContent = `${cur?.name || ''}の番`;
+  }
   const lead = Math.max(...g.players.map((p) => p.pos));
   $('#goal-chip').textContent = `先頭 残り${Math.max(0, GOAL - lead)}`;
   $('#current-name').textContent = cur ? `${cur.name} / ${JOBS[cur.job].name}` : '';
@@ -416,8 +450,9 @@ function renderHud() {
   const looked = app.lookSeat != null ? g.players[app.lookSeat] : null;
   const focus = looked || (g.phase === 'act' ? cur : (g.players.find((p) => controlling(p)) || cur));
   const job = focus ? JOBS[focus.job] : null;
+  // 操作可否はシステム手番（sysCur）。表示マーク（cur）とは別に見る
   const actionable = !!(
-    focus && g.phase === 'act' && focus.id === cur?.id && myTurn() && !app.busy
+    focus && g.phase === 'act' && focus.id === sysCur?.id && myTurn() && !app.busy
   );
   let skills = '';
   if (job && focus) {
@@ -442,8 +477,8 @@ function renderHud() {
   }
   $('#skills-panel').innerHTML = skills;
 
-  const canRoll = g.phase === 'act' && myTurn() && !app.busy && !!cur
-    && listActions(g, cur.id).some((a) => a.type === 'roll');
+  const canRoll = g.phase === 'act' && myTurn() && !app.busy && !!sysCur
+    && listActions(g, sysCur.id).some((a) => a.type === 'roll');
   $('#btn-roll').hidden = g.phase === 'draft';
   $('#btn-roll').disabled = !canRoll;
   const draftWaiting = myDraftSeats().length > 0;
@@ -579,6 +614,7 @@ function draw() {
     viewW: canvas.width,
     viewH: canvas.height,
     displayPos: app.displayPos,
+    turnSeat: markedTurnPlayer()?.id,
     highlight: app.targeting?.tiles,
     inspect: app.inspectIndex,
     time: performance.now(),
@@ -747,7 +783,8 @@ async function playEvent(e) {
   else if (e.t === 'block') audio.sfx.block();
   else if (e.t === 'roulette') audio.sfx.roulette();
   else if (e.t === 'upgrade' || e.t === 'draft') audio.sfx.draft();
-  else if (e.t === 'turn') {
+  else   if (e.t === 'turn') {
+    app.turnMarkSeat = e.seat;
     const player = g.players[e.seat];
     if (controlling(player)) audio.sfx.yourTurn();
     app.cpuSeat = null;
@@ -765,6 +802,8 @@ function enqueue(events) {
   if (list.some((e) => e.t === 'step' || e.t === 'swap')) {
     app.displayPos = rewind(list, app.game);
   }
+  const actor = actorSeatFromEvents(list);
+  if (actor != null) app.turnMarkSeat = actor;
   app.queue.push(...list);
   pump();
 }
@@ -784,6 +823,7 @@ async function pump() {
     app.busy = false;
     app.pumping = false;
     app.targeting = null;
+    if (app.game) app.turnMarkSeat = app.game.turn;
     refresh();
     scheduleCpu();
     drainInbox();
@@ -815,6 +855,8 @@ function resolveAction(seat, action) {
     if (ct === 0) app.cpuUsed.delete(action.id);
     else app.cpuUsed.add(action.id);
   }
+  // 移動・罠などの演出が終わるまで手番マークを動かさない
+  app.turnMarkSeat = seat;
   publish(res.events);
 }
 

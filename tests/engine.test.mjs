@@ -699,3 +699,37 @@ describe('強化プール', () => {
     assert.equal(s3.players[0].hp, Math.min(s3.players[0].maxHp, 8 + 1));
   });
 });
+
+describe('手番演出', () => {
+  it('beginTurn は休みや効果より先に turn イベントを出す', () => {
+    const s = setup(['vanguard', 'trap']);
+    // 次の手番になる相手をダウンさせて、ロール後の beginTurn を観察する
+    const seat = s.turn;
+    const next = s.players.find((p) => p.id !== seat);
+    next.downed = true;
+    next.hp = 0;
+    const { ok, events } = act(s, seat, { type: 'roll' }, [2]);
+    assert.equal(ok, true);
+    const rest = events.findIndex((e) => e.t === 'rest' && e.seat === next.id);
+    assert.ok(rest >= 0);
+    // その休みに対応する turn は rest より前
+    const turnForNext = events.findIndex((e) => e.t === 'turn' && e.seat === next.id);
+    assert.ok(turnForNext >= 0);
+    assert.ok(turnForNext < rest);
+  });
+
+  it('ダイス移動のあいだはまだ次の turn イベントが来ない並びになる', () => {
+    const s = setup(['vanguard', 'trap']);
+    const seat = s.turn;
+    const { ok, events } = act(s, seat, { type: 'roll' }, [3]);
+    assert.equal(ok, true);
+    const di = events.findIndex((e) => e.t === 'dice' && e.seat === seat);
+    const si = events.findIndex((e) => e.t === 'step' && e.seat === seat);
+    const ti = events.findIndex((e, i) => i > di && e.t === 'turn');
+    assert.ok(di >= 0);
+    assert.ok(si >= 0);
+    assert.ok(ti >= 0);
+    assert.ok(si < ti, 'step before next turn event');
+  });
+});
+
