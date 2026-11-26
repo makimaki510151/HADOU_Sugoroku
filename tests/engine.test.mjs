@@ -276,6 +276,8 @@ describe('アサシン', () => {
 
   it('半分以下を処刑で倒すと全CTが戻る', () => {
     const s = setup(['assassin', 'vanguard']);
+    s.players[0].pos = 2;
+    s.players[1].pos = 4;
     s.players[1].hp = 5;
     s.players[0].ct.poison = 2;
     s.players[0].ct.shadow = 4;
@@ -288,15 +290,36 @@ describe('アサシン', () => {
     assert.equal(s.players[0].ct.execute, 0);
   });
 
+  it('処刑は前後3マスを超えると届かない', () => {
+    const s = setup(['assassin', 'vanguard']);
+    s.players[0].pos = 0;
+    s.players[1].pos = 5;
+    s.players[1].hp = 4;
+    assert.match(skillLockReason(s, 0, 'execute'), /3マス/);
+    assert.equal(act(s, 0, { type: 'skill', id: 'execute', target: 1 }).ok, false);
+    assert.equal(s.players[1].hp, 4);
+  });
+
   it('毒刃はダメージと次の出目-2', () => {
     const s = setup(['assassin', 'vanguard']);
+    s.players[0].pos = 0;
+    s.players[1].pos = 3;
     act(s, 0, { type: 'skill', id: 'poison', target: 1 });
     assert.equal(s.players[1].hp, s.players[1].maxHp - 3);
     assert.equal(s.players[1].diceModNext, -2);
     act(s, 0, { type: 'roll' }, [2]);
     act(s, 1, { type: 'roll' }, [3]);
-    assert.equal(s.players[1].pos, 1);
+    assert.equal(s.players[1].pos, 4);
     assert.equal(s.players[1].diceModNext, 0);
+  });
+
+  it('毒刃は前後4マスを超えると届かない', () => {
+    const s = setup(['assassin', 'vanguard']);
+    s.players[0].pos = 0;
+    s.players[1].pos = 5;
+    assert.match(skillLockReason(s, 0, 'poison'), /届く範囲/);
+    assert.equal(act(s, 0, { type: 'skill', id: 'poison', target: 1 }).ok, false);
+    assert.equal(s.players[1].hp, s.players[1].maxHp);
   });
 });
 

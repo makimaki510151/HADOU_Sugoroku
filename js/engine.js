@@ -306,16 +306,17 @@ export function skillLockReason(state, seat, skillId) {
     if (ahead.ironGuard) return `${ahead.name} はガード中`;
   }
   if (skillId === 'execute') {
-    const ok = state.players.some((o) => (
-      o.id !== seat && !o.finished && o.hp > 0 && o.hp / o.maxHp <= (sk.hpRate || 0.5)
+    const range = sk.range || 3;
+    const ok = playersInRange(state, seat, range).some((o) => (
+      o.hp > 0 && o.hp / o.maxHp <= (sk.hpRate || 0.5)
     ));
-    if (!ok) return 'HP半分以下の相手がいない';
+    if (!ok) return `前後${range}マスに、HP半分以下の相手がいない`;
   }
   if (skillId === 'allin') {
     const low = player.hp / player.maxHp <= (sk.hpRate || 0.3);
     if (!low && !isLastPlace(state, seat)) return '最下位か、HP30%以下のとき';
   }
-  if (skillId === 'poison' && playersInRange(state, seat, sk.range || 8).length === 0) {
+  if (skillId === 'poison' && playersInRange(state, seat, sk.range || 4).length === 0) {
     return '届く範囲に相手がいない';
   }
   if (skillId === 'spike' && spikeTiles(state, seat).length === 0) {
@@ -379,14 +380,14 @@ export function listActions(state, seat) {
       continue;
     }
     if (sk.id === 'poison') {
-      for (const o of playersInRange(state, seat, sk.range || 8)) {
+      for (const o of playersInRange(state, seat, sk.range || 4)) {
         actions.push({ type: 'skill', id: 'poison', target: o.id });
       }
       continue;
     }
     if (sk.id === 'execute') {
-      for (const o of state.players) {
-        if (o.id === seat || o.finished || o.hp <= 0) continue;
+      for (const o of playersInRange(state, seat, sk.range || 3)) {
+        if (o.hp <= 0) continue;
         if (o.hp / o.maxHp <= (sk.hpRate || 0.5)) {
           actions.push({ type: 'skill', id: 'execute', target: o.id });
         }
@@ -925,7 +926,7 @@ function doSkill(state, seat, action, events) {
     return '';
   }
   if (id === 'poison') {
-    const targets = playersInRange(state, seat, sk.range || 8);
+    const targets = playersInRange(state, seat, sk.range || 4);
     const target = state.players[action.target];
     if (!target || !targets.includes(target)) return 'その相手には届かない';
     setCt(player, id);
@@ -946,6 +947,8 @@ function doSkill(state, seat, action, events) {
     const target = state.players[action.target];
     if (!target || target.id === seat || target.hp <= 0) return '対象がいない';
     if (target.hp / target.maxHp > (sk.hpRate || 0.5)) return 'まだHPが半分より上';
+    const range = sk.range || 3;
+    if (Math.abs(target.pos - player.pos) > range) return `前後${range}マスまで`;
     setCt(player, id);
     const dmg = power(player, sk.damage || 6, 'bladePlus');
     const res = hurt(state, target.id, dmg, seat, events, 'execute');
