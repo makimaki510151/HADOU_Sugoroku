@@ -3,4 +3,4 @@
  * プロトコルや必須データ形を壊すたびに上げる。
  * ホストとゲストで一致しないと部屋に入れない。
  */
-export const APP_VERSION = '1.3.0';
+export const APP_VERSION = '1.3.3';
