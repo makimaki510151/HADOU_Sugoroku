@@ -4,6 +4,13 @@
  */
 export const PATCH_NOTES = [
   {
+    version: '1.6.5',
+    date: '2026-11-26',
+    items: [
+      '対局ログをさかのぼっているあいだは、新規ログが来ても下端へ飛ばないようにした',
+    ],
+  },
+  {
     version: '1.6.4',
     date: '2026-11-26',
     items: [
