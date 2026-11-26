@@ -65,4 +65,9 @@ describe('画面の骨', () => {
     assert.doesNotMatch(html, /お金はない/);
     assert.doesNotMatch(html, /うっとうしいスキル/);
   });
+
+  it('対局ログはおよそ10行分の高さを確保する', () => {
+    assert.match(css, /#log\s*\{[^}]*max-height:\s*11rem/s);
+    assert.doesNotMatch(css, /#log\s*\{[^}]*max-height:\s*4\.2rem/s);
+  });
 });

@@ -512,7 +512,8 @@ input[type="text"], input:not([type]) {
   margin-top: 0;
   border-top: 2px dashed var(--ink);
   padding-top: 0.25rem;
-  max-height: 4.2rem;
+  /* およそ10行分（font 0.74rem × line-height 1.4 + 行間） */
+  max-height: 11rem;
   overflow: auto;
   font-size: 0.74rem;
   flex: none;
@@ -731,7 +732,8 @@ input[type="text"], input:not([type]) {
   }
   #log {
     order: 5;
-    max-height: 2.2rem;
+    /* およそ10行分（小さめフォント） */
+    max-height: 9.5rem;
     font-size: 0.64rem;
     padding-top: 0.15rem;
   }
