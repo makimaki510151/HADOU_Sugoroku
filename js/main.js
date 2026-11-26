@@ -82,6 +82,171 @@ function showScreen(id) {
   if (id === 'screen-game') requestAnimationFrame(resizeBoard);
 }
 
+/** 対局を閉じてタイトルへ。結果パネルやネットも片付ける。 */
+function returnToTitle() {
+  audio.stopBgm();
+  clearTimeout(app.cpuTimer);
+  app.cpuTimer = null;
+  for (const t of app.disconnectTimers.values()) clearTimeout(t);
+  app.disconnectTimers.clear();
+  if (app.flashResolve) {
+    const done = app.flashResolve;
+    app.flashResolve = null;
+    try { done(); } catch { /* ignore */ }
+  }
+  app.net?.destroy();
+  app.net = null;
+  app.game = null;
+  app.mode = null;
+  app.busy = false;
+  app.pumping = false;
+  app.queue = [];
+  app.inbox = [];
+  app.targeting = null;
+  app.playerPick = null;
+  app.draftPeek = false;
+  app.lookSeat = null;
+  app.inspectIndex = null;
+  app.displayPos = null;
+  app.cpuSeat = null;
+  app.cpuUsed = new Set();
+  app.cpuCount = 0;
+  app.userCam = false;
+  const winner = $('#winner');
+  if (winner) winner.hidden = true;
+  const modal = $('#modal');
+  if (modal) modal.hidden = true;
+  const flash = $('#event-flash');
+  if (flash) flash.hidden = true;
+  const reconnect = $('#reconnect-overlay');
+  if (reconnect) reconnect.hidden = true;
+  showScreen('screen-title');
+}
+
+function downloadBlob(blob, filename) {
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(a.href);
+}
+
+/** 結果画面の内容をPNGとして保存する */
+function exportResultsPng() {
+  const g = app.game;
+  if (!g || g.phase !== 'gameover') {
+    toast('まだ結果がない');
+    return;
+  }
+  const { ranked, awards } = buildResults(g);
+  const winner = g.players[g.winner];
+  const W = 720;
+  const pad = 40;
+  const rowH = 54;
+  const awardH = awards.length ? 28 + awards.length * 34 : 0;
+  const H = pad + 120 + ranked.length * rowH + awardH + pad + 36;
+  const canvas = document.createElement('canvas');
+  canvas.width = W;
+  canvas.height = H;
+  const ctx = canvas.getContext('2d');
+  const paper = '#fff8ea';
+  const ink = '#221814';
+  const hot = '#ff4d6d';
+  const yolk = '#f6e2b8';
+  const display = '"Yusei Magic", "Hiragino Maru Gothic ProN", sans-serif';
+  const body = '"Dela Gothic One", "Hiragino Maru Gothic ProN", sans-serif';
+  const roundRect = (x, y, w, h, r) => {
+    if (typeof ctx.roundRect === 'function') {
+      ctx.beginPath();
+      ctx.roundRect(x, y, w, h, r);
+      return;
+    }
+    const rr = Math.min(r, w / 2, h / 2);
+    ctx.beginPath();
+    ctx.moveTo(x + rr, y);
+    ctx.arcTo(x + w, y, x + w, y + h, rr);
+    ctx.arcTo(x + w, y + h, x, y + h, rr);
+    ctx.arcTo(x, y + h, x, y, rr);
+    ctx.arcTo(x, y, x + w, y, rr);
+    ctx.closePath();
+  };
+
+  ctx.fillStyle = paper;
+  ctx.fillRect(0, 0, W, H);
+  ctx.strokeStyle = ink;
+  ctx.lineWidth = 8;
+  ctx.strokeRect(4, 4, W - 8, H - 8);
+
+  ctx.fillStyle = hot;
+  ctx.font = `28px ${display}`;
+  ctx.fillText('GOAL', pad, pad + 28);
+  ctx.fillStyle = ink;
+  ctx.font = `44px ${display}`;
+  ctx.fillText(`${winner?.name || ''} の勝ち`, pad, pad + 78);
+  ctx.font = `20px ${body}`;
+  ctx.fillStyle = '#5a4036';
+  const jobName = winner ? (JOBS[winner.job]?.name || winner.job) : '';
+  ctx.fillText(`${jobName}が100マス目に乗った  ·  v${APP_VERSION}`, pad, pad + 108);
+
+  let y = pad + 140;
+  ranked.forEach((p, i) => {
+    ctx.fillStyle = ink;
+    ctx.font = `22px ${body}`;
+    ctx.fillText(`${i + 1}. ${p.name}`, pad, y);
+    ctx.textAlign = 'right';
+    ctx.fillText(`${p.pos + 1}マス / HP${p.hp}`, W - pad, y);
+    ctx.textAlign = 'left';
+    const barY = y + 10;
+    const barW = W - pad * 2;
+    const barH = 16;
+    ctx.fillStyle = '#fff';
+    ctx.strokeStyle = ink;
+    ctx.lineWidth = 3;
+    roundRect(pad, barY, barW, barH, 999);
+    ctx.fill();
+    ctx.stroke();
+    const fillW = Math.max(0, Math.min(1, (p.pos + 1) / 100)) * barW;
+    if (fillW > 0) {
+      ctx.fillStyle = p.color || hot;
+      roundRect(pad, barY, fillW, barH, 999);
+      ctx.fill();
+    }
+    y += rowH;
+  });
+
+  if (awards.length) {
+    y += 8;
+    for (const a of awards) {
+      const label = `${a.title} ${a.name}（${a.detail}）`;
+      ctx.font = `18px ${body}`;
+      const tw = ctx.measureText(label).width;
+      const bx = pad;
+      const by = y - 18;
+      const bw = Math.min(W - pad * 2, tw + 24);
+      const bh = 28;
+      ctx.fillStyle = yolk;
+      ctx.strokeStyle = ink;
+      ctx.lineWidth = 2;
+      roundRect(bx, by, bw, bh, 12);
+      ctx.fill();
+      ctx.stroke();
+      ctx.fillStyle = ink;
+      ctx.fillText(label, bx + 12, y);
+      y += 34;
+    }
+  }
+
+  canvas.toBlob((blob) => {
+    if (!blob) {
+      toast('PNGにできなかった');
+      return;
+    }
+    const stamp = new Date().toISOString().slice(0, 19).replace(/[:T]/g, '-');
+    downloadBlob(blob, `hadou-result-${stamp}.png`);
+    toast('結果PNGを保存した');
+  }, 'image/png');
+}
+
 function saveName(name) {
   app.localName = name;
   try { localStorage.setItem(NAME_KEY, name); } catch { /* ignore */ }
@@ -1307,29 +1472,16 @@ function bind() {
   };
   $('#ef-continue').onclick = () => app.flashResolve?.();
   $('#btn-again').onclick = () => {
-    audio.stopBgm();
-    app.game = null;
-    showScreen('screen-title');
+    audio.sfx.click();
+    returnToTitle();
   };
   $('#btn-export').onclick = () => {
-    const blob = new Blob([JSON.stringify({
-      schema: 'hadou-sugoroku-results/v1',
-      version: APP_VERSION,
-      state: serializeState(app.game),
-      results: buildResults(app.game),
-    }, null, 2)], { type: 'application/json' });
-    const a = document.createElement('a');
-    a.href = URL.createObjectURL(blob);
-    a.download = 'hadou-result.json';
-    a.click();
-    URL.revokeObjectURL(a.href);
+    audio.sfx.click();
+    exportResultsPng();
   };
   $('#btn-reconnect-title').onclick = () => {
     $('#reconnect-overlay').hidden = true;
-    app.net?.destroy();
-    app.net = null;
-    app.game = null;
-    showScreen('screen-title');
+    returnToTitle();
   };
   $('#btn-reconnect-now').onclick = () => {
     $('#reconnect-overlay').hidden = true;

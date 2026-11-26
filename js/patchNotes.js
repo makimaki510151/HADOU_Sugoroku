@@ -4,6 +4,14 @@
  */
 export const PATCH_NOTES = [
   {
+    version: '1.5.4',
+    date: '2026-11-26',
+    items: [
+      '対局終了の「タイトルへ」で結果パネルが残らないようにした',
+      '結果の書き出しをJSONからPNGに変更した',
+    ],
+  },
+  {
     version: '1.5.0',
     date: '2026-11-26',
     items: [
