@@ -307,13 +307,13 @@ export function describeTile(state, index) {
   else if (tile.hidden) body += ' なにか仕掛けてありそう…';
   else if (tile.kind === 'spike') {
     const owner = state.players[tile.owner]?.name || '誰か';
-    body += ` 【杭】スパイク（${owner} / ${tile.damage}ダメ・強制停止）`;
+    body += ` 【杭】スパイク（${owner} / ${tile.damage}ダメ・強制停止${tile.durable ? '・粘着' : '・起動で壊れる'}）`;
   } else if (tile.kind === 'curse') {
     const owner = state.players[tile.owner]?.name || '誰か';
-    body += ` 【呪】逆走の呪印（${owner} / ${tile.back || 2}マス戻る）`;
+    body += ` 【呪】逆走の呪印（${owner} / ${tile.back || 2}マス戻る${tile.durable ? '・粘着' : '・起動で壊れる'}）`;
   } else if (tile.kind === 'boost') {
     const owner = state.players[tile.owner]?.name || '誰か';
-    body += ` 【走】加速床（${owner} / +${tile.steps || 3}マス・消える）`;
+    body += ` 【走】加速床（${owner} / +${tile.steps || 3}マス・起動で消える）`;
   } else {
     body += ' 仕掛けあり';
   }

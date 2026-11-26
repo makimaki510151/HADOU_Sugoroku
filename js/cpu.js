@@ -111,6 +111,7 @@ function scoreUpgrade(state, seat, id) {
     case 'floor': return player.job === 'gambler' ? 6 : 3;
     case 'dash_plus':
     case 'spike_plus':
+    case 'sticky_trap':
     case 'blade_plus':
     case 'zero_guard':
     case 'field_plus':
