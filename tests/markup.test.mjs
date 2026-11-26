@@ -18,6 +18,7 @@ describe('画面の骨', () => {
       'screen-game',
       'board',
       'btn-roll',
+      'btn-draft-open',
       'btn-nudge',
       'vol-master',
       'event-flash',

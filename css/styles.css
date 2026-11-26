@@ -326,6 +326,9 @@ input[type="text"], input:not([type]) {
   padding: 0.6rem 0.7rem 1rem;
 }
 .player-card {
+  display: block;
+  width: 100%;
+  text-align: left;
   border: 3px solid var(--ink);
   border-radius: 14px;
   padding: 0.4rem 0.5rem 0.5rem;
@@ -335,6 +338,16 @@ input[type="text"], input:not([type]) {
 }
 .player-card.me { background: #fff4c2; }
 .player-card.turn { outline: 3px dashed var(--ink); outline-offset: 1px; }
+.player-card.looking { box-shadow: inset 6px 0 0 var(--pc, var(--hot)), 3px 3px 0 var(--ink); }
+.look-badge { background: var(--yolk); }
+.sheet-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.4rem;
+  margin-top: 0.35rem;
+}
+.sheet-head strong { font-size: 0.95rem; }
 .pc-top { display: flex; justify-content: space-between; gap: 0.4rem; font-size: 0.92rem; }
 .pc-sub { color: var(--muted); font-size: 0.78rem; margin-top: 0.1rem; }
 .badges { display: flex; flex-wrap: wrap; gap: 0.2rem; margin-top: 0.25rem; }
@@ -379,6 +392,7 @@ input[type="text"], input:not([type]) {
   font-size: 0.75rem;
 }
 .skill-btn small { display: block; color: var(--muted); font-size: 0.75rem; margin-top: 0.15rem; }
+.skill-btn.look:disabled { opacity: 1; cursor: default; }
 .roll-btn { width: 100%; margin-top: 0.3rem; }
 #log {
   margin-top: 0.7rem;
