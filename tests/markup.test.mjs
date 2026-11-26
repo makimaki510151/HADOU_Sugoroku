@@ -1,0 +1,48 @@
+import { describe, it } from 'node:test';
+import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
+
+const html = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
+const css = readFileSync(new URL('../css/styles.css', import.meta.url), 'utf8');
+const net = readFileSync(new URL('../js/net.js', import.meta.url), 'utf8');
+const audio = readFileSync(new URL('../js/audio.js', import.meta.url), 'utf8');
+
+describe('画面の骨', () => {
+  it('タイトル・部屋・盤・音量・催促がある', () => {
+    for (const id of [
+      'screen-title',
+      'btn-host',
+      'btn-join',
+      'btn-local',
+      'screen-lobby',
+      'screen-game',
+      'board',
+      'btn-roll',
+      'btn-nudge',
+      'vol-master',
+      'event-flash',
+      'winner',
+    ]) {
+      assert.match(html, new RegExp(`id="${id}"`));
+    }
+  });
+
+  it('PeerJSの部屋IDは hadou- で、バージョン不一致を弾く前提のネットがある', () => {
+    assert.match(net, /hadou-\$\{code\}/);
+    assert.match(net, /peerjs@1\.5\.4/);
+    assert.match(net, /sendToHost/);
+    assert.match(net, /broadcast/);
+  });
+
+  it('手番と催促のSEがある', () => {
+    assert.match(audio, /yourTurn\(/);
+    assert.match(audio, /nudge\(/);
+    assert.match(audio, /hadou-sugoroku-vol/);
+  });
+
+  it('ポップな紙の色を使って、紫グラデの定型にしない', () => {
+    assert.match(css, /#fff8ea|#f6e2b8|#ff4d6d/);
+    assert.doesNotMatch(css, /linear-gradient\([^)]*#7c3aed/i);
+    assert.match(css, /Yusei Magic/);
+  });
+});

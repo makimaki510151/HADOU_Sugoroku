@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>波動すごろく</title>
+  <meta name="description" content="職を選んで100マスを競う、P2Pの一本道すごろく" />
+  <meta name="theme-color" content="#ffc53d" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Dela+Gothic+One&family=Yusei+Magic&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="./css/styles.css" />
+</head>
+<body>
+  <section id="screen-title" class="screen active">
+    <div class="paper-dots" aria-hidden="true"></div>
+    <div class="title-stamps" aria-hidden="true">
+      <span class="stamp stamp-a">先に100</span>
+      <span class="stamp stamp-b">職を選べ</span>
+      <span class="die-doodle">6</span>
+      <span class="die-doodle die-b">0</span>
+    </div>
+    <div class="title-brand">
+      <p class="brand-eyebrow">P2P SKILL RACE</p>
+      <h1 class="brand-mark">波動すごろく</h1>
+      <p class="brand-sub">職を握って、100マスをぶち抜け。お金はない。あるのはHPと、うっとうしいスキル。</p>
+      <p class="brand-version" id="app-version-label">v—</p>
+    </div>
+    <div class="title-actions">
+      <button class="btn primary large" id="btn-host" type="button">部屋を作る</button>
+      <button class="btn large" id="btn-join" type="button">部屋に入る</button>
+      <button class="btn yolk large" id="btn-local" type="button">この機で遊ぶ</button>
+      <button class="btn ghost" id="btn-howto" type="button">遊び方</button>
+      <button class="btn ghost" id="btn-patch" type="button">パッチノート</button>
+    </div>
+  </section>
+
+  <section id="screen-howto" class="screen">
+    <div class="panel howto">
+      <h2>遊び方</h2>
+      <p class="howto-lead">一本道を100マス。先にゴールへ乗った人が勝ち。<strong>ぴったり止まらなくていい。</strong></p>
+      <section class="howto-block">
+        <h3>番の流れ</h3>
+        <ul>
+          <li>ターン開始でCTが1減る。休み・ガードの期限もここで処理する。</li>
+          <li>自分のスキルを好きなだけ使ってから、ダイスを振る。突撃とオールインは、その振った目が移動になって番が終わる。</li>
+          <li>止まったマスの罠が発動する。スパイクはダメージで強制停止、呪印は3マス戻す。</li>
+        </ul>
+      </section>
+      <section class="howto-block">
+        <h3>HP</h3>
+        <ul>
+          <li>お金の代わりにHP。0になると次の自分の番を1回休み、その次で最大HPの4割で起き上がる。</li>
+          <li>ヴァンガードが起き上がった番は、出目に+3。</li>
+        </ul>
+      </section>
+      <section class="howto-block">
+        <h3>職</h3>
+        <ul>
+          <li><strong>ヴァンガード</strong> ダイス1〜6 / HP30。ダッシュ、ガード、後ろに誰かいるときの突撃。</li>
+          <li><strong>トラップマスター</strong> 1〜6 / HP22。自分の罠は踏んでも得。スパイク、呪印、起爆。</li>
+          <li><strong>アサシン</strong> 2〜5 / HP16。同じマスで刺して2マス進む。毒、入れ替え、処刑。</li>
+          <li><strong>ギャンブラー</strong> 0〜8 / HP20。0で回復。イカサマ、道連れ、オールイン。</li>
+        </ul>
+      </section>
+      <section class="howto-block">
+        <h3>2ラウンド目から</h3>
+        <ul>
+          <li>いちばん後ろ（同着も含む）は、そのラウンドの通常ダイスが+1個。</li>
+          <li>1位以外は強化が3枚出る。1枚選ぶ。1位は見ているだけ。</li>
+        </ul>
+      </section>
+      <section class="howto-block">
+        <h3>オンライン</h3>
+        <ul>
+          <li>ホストが部屋コードを渡す。ゲストは同じコード。<strong>バージョンが違うと入れない。</strong></li>
+          <li>切れても同じ名前で再接続。20秒戻らなければCPUが代打。</li>
+          <li>相手の番が止まったら「催促」。スペースキーでもダイスが振れる。</li>
+        </ul>
+      </section>
+      <div class="row-actions">
+        <button class="btn primary" id="btn-howto-back" type="button">戻る</button>
+      </div>
+    </div>
+  </section>
+
+  <section id="screen-patch" class="screen">
+    <div class="panel howto">
+      <h2>パッチノート</h2>
+      <p class="howto-lead">部屋に入るときは、ホストと<strong>同じバージョン</strong>である必要がある。</p>
+      <div id="patch-notes-list"></div>
+      <div class="row-actions">
+        <button class="btn primary" id="btn-patch-back" type="button">戻る</button>
+      </div>
+    </div>
+  </section>
+
+  <section id="screen-setup" class="screen">
+    <div class="panel setup-panel">
+      <h2>この機の面子</h2>
+      <p class="hint">人間の席は、その人の番が来たらこの画面で操作する。CPUは勝手に動く。</p>
+      <div class="level-row" id="setup-level" role="radiogroup" aria-label="CPUの強さ">
+        <span class="field-label">CPU</span>
+        <button type="button" data-level="easy">ゆるい</button>
+        <button type="button" data-level="normal" class="on">ふつう</button>
+      </div>
+      <div id="setup-seats"></div>
+      <div class="row-actions">
+        <button class="btn" id="btn-add-seat" type="button">席を足す</button>
+        <button class="btn" id="btn-remove-seat" type="button">席を減らす</button>
+      </div>
+      <div class="row-actions">
+        <button class="btn" id="btn-setup-back" type="button">戻る</button>
+        <button class="btn primary" id="btn-start-local" type="button">ゲーム開始</button>
+      </div>
+    </div>
+  </section>
+
+  <section id="screen-lobby" class="screen">
+    <div class="panel lobby-panel">
+      <h2 id="lobby-title">ロビー</h2>
+      <div class="lobby-grid">
+        <div>
+          <p id="lobby-role" class="hint"></p>
+          <label class="field">名前
+            <input id="lobby-name" maxlength="12" value="あなた" />
+          </label>
+          <div class="field">
+            <span class="field-label">職</span>
+            <div id="lobby-jobs" class="job-picks"></div>
+          </div>
+          <div class="field">
+            <span class="field-label">色</span>
+            <div id="lobby-colors" class="color-picks"></div>
+          </div>
+          <label class="field" id="lobby-room-wrap">部屋コード
+            <input id="lobby-room" maxlength="8" placeholder="例 AB12CD" autocapitalize="characters" />
+          </label>
+          <p id="net-status" class="status-line">未接続</p>
+          <div id="lobby-players"></div>
+          <div class="row-actions">
+            <button class="btn" id="btn-lobby-back" type="button">戻る</button>
+            <button class="btn primary" id="btn-lobby-connect" type="button">部屋を作る</button>
+            <button class="btn" id="btn-lobby-reconnect" type="button" hidden>再接続</button>
+            <button class="btn danger" id="btn-lobby-dismantle" type="button" hidden>部屋を解体</button>
+          </div>
+        </div>
+        <aside id="lobby-host-box">
+          <div class="code-big" id="lobby-code">------</div>
+          <div class="row-actions">
+            <button class="btn tiny" id="btn-copy-code" type="button">コードをコピー</button>
+            <button class="btn tiny" id="btn-add-cpu" type="button">CPUを足す</button>
+          </div>
+          <div class="level-row" id="lobby-level" role="radiogroup" aria-label="CPUの強さ">
+            <span class="field-label">CPU</span>
+            <button type="button" data-level="easy">ゆるい</button>
+            <button type="button" data-level="normal" class="on">ふつう</button>
+          </div>
+          <p class="hint">開始前に職を決める。足りない席はCPU。</p>
+          <button class="btn primary large" id="btn-lobby-start" type="button">ゲーム開始</button>
+        </aside>
+      </div>
+    </div>
+  </section>
+
+  <section id="screen-game" class="screen">
+    <header class="topbar">
+      <span class="brand-mini">波動</span>
+      <div class="topbar-meta">
+        <span class="chip" id="round-chip">R1</span>
+        <span class="chip" id="turn-chip">手番</span>
+        <span class="chip" id="goal-chip">残り100</span>
+      </div>
+      <span id="current-name"></span>
+    </header>
+    <div class="game-body">
+      <div class="board-wrap" id="board-wrap">
+        <canvas id="board" aria-label="100マスのコース"></canvas>
+        <div id="board-zoom" class="board-zoom">
+          <button type="button" id="btn-zoom-out" aria-label="縮小">−</button>
+          <button type="button" id="btn-zoom-fit" aria-label="全体">全体</button>
+          <button type="button" id="btn-zoom-in" aria-label="拡大">+</button>
+        </div>
+        <p id="inspect" class="inspect">マスをタップすると中身が出る</p>
+        <div id="dice-overlay" hidden>
+          <div class="dice-stage">
+            <div id="dice-faces">?</div>
+            <div id="dice-label">サイコロ</div>
+          </div>
+        </div>
+        <div id="event-flash" hidden role="dialog" aria-modal="true">
+          <div class="ef-stage">
+            <p class="ef-kicker" id="ef-kicker"></p>
+            <p class="ef-title" id="ef-title"></p>
+            <p class="ef-detail" id="ef-detail"></p>
+            <button class="btn primary" id="ef-continue" type="button">つづける</button>
+          </div>
+        </div>
+      </div>
+      <aside class="hud" id="hud">
+        <div id="players-panel"></div>
+        <div id="skills-panel"></div>
+        <div class="controls">
+          <button class="btn yolk large roll-btn" id="btn-roll" type="button">ダイスを振る</button>
+          <p id="wait-hint" class="hint" hidden></p>
+          <p id="target-hint" class="hint" hidden></p>
+          <button class="btn" id="btn-cancel-target" type="button" hidden>選ぶのをやめる</button>
+          <button class="btn nudge" id="btn-nudge" type="button" hidden>催促する</button>
+        </div>
+        <div id="log" aria-live="polite"></div>
+      </aside>
+    </div>
+  </section>
+
+  <div id="modal" hidden>
+    <div class="modal-card" role="dialog" aria-modal="true">
+      <h3 id="modal-title">選ぶ</h3>
+      <div id="modal-body"></div>
+      <div class="row-actions">
+        <button class="btn" id="btn-modal-cancel" type="button">閉じる</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="winner" hidden>
+    <div class="results-panel">
+      <p class="results-kicker">GOAL</p>
+      <h2 id="winner-name">勝ち</h2>
+      <p id="winner-sub"></p>
+      <div id="results-body"></div>
+      <div class="results-actions">
+        <button class="btn" id="btn-export" type="button">結果JSON</button>
+        <button class="btn primary large" id="btn-again" type="button">タイトルへ</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="reconnect-overlay" hidden>
+    <div class="reconnect-card">
+      <h3>接続が切れた</h3>
+      <p id="reconnect-detail" class="hint">同じ部屋コードと名前で戻れる。</p>
+      <div class="row-actions">
+        <button class="btn" id="btn-reconnect-title" type="button">タイトルへ</button>
+        <button class="btn primary" id="btn-reconnect-now" type="button">再接続</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="toast" hidden></div>
+
+  <div id="vol-dock" class="vol-collapsed">
+    <button type="button" id="btn-mute" class="btn tiny">音</button>
+    <button type="button" id="btn-vol-expand" class="btn tiny ghost" aria-label="音量">⋯</button>
+    <div class="vol-sliders">
+      <label>全体<input type="range" id="vol-master" min="0" max="1" step="0.01" /></label>
+      <label>BGM<input type="range" id="vol-bgm" min="0" max="1" step="0.01" /></label>
+      <label>SE<input type="range" id="vol-se" min="0" max="1" step="0.01" /></label>
+    </div>
+  </div>
+
+  <script type="module" src="./js/main.js"></script>
+</body>
+</html>
