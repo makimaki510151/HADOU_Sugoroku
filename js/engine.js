@@ -654,6 +654,9 @@ function consumeMod(player, sum) {
 function beginTurn(state, events) {
   if (state.phase === 'gameover') return;
   const player = currentPlayer(state);
+  // 手番マークはターン開始直後に出す。移動・罠・休み演出のあいだは前の人のままにするため、
+  // システム上の turn 切替より演出側がこのイベントを見てマークを進める。
+  events.push({ t: 'turn', seat: player.id, round: state.round });
   tickCt(player);
   player.ironGuard = false;
   player.loaded = false;
@@ -695,7 +698,6 @@ function beginTurn(state, events) {
   }
   state.phase = 'act';
   state.actedThisRound = true;
-  events.push({ t: 'turn', seat: player.id, round: state.round });
 }
 
 function endTurn(state, events) {
