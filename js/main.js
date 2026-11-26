@@ -464,12 +464,16 @@ function renderHud() {
   const logEl = $('#log');
   if (logEl) {
     const lines = g.log.slice(-24);
+    const prevTop = logEl.scrollTop;
+    // 下端付近にいるときだけ追従。さかのぼり中に新規ログで飛ばない
     const stickBottom = logEl.scrollHeight - logEl.scrollTop - logEl.clientHeight < 48;
     logEl.innerHTML = lines.map((line) => (
       `<p class="${escapeHtml(line.kind || '')}">${escapeHtml(line.text)}</p>`
     )).join('');
-    if (stickBottom || lines.length) {
+    if (stickBottom) {
       logEl.scrollTop = logEl.scrollHeight;
+    } else {
+      logEl.scrollTop = prevTop;
     }
   }
 
