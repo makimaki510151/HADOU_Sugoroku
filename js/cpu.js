@@ -146,7 +146,7 @@ function scoreUpgrade(state, seat, id) {
     case 'curse_plus':
     case 'boom_plus':
     case 'blade_plus':
-    case 'poison_pen':
+    case 'poison_far':
     case 'shadow_long':
     case 'foot_plus':
     case 'zero_guard':

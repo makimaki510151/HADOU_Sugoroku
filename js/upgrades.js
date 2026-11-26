@@ -58,7 +58,7 @@ export const UPGRADES = [
 
   // —— 職：アサシン ——
   { id: 'blade_plus', name: '刃の油', blurb: '毒刃・歩法・処刑のダメージ+1（重ねて最大2）', job: 'assassin', max: 2, grant: { type: 'perk', key: 'bladePlus', by: 1 } },
-  { id: 'poison_pen', name: '濃い毒', blurb: '毒刃の出目ペナルティがさらに-1（1回まで）', job: 'assassin', max: 1, grant: { type: 'perk', key: 'poisonPen', by: 1 } },
+  { id: 'poison_far', name: '遠投げ', blurb: '毒刃の射程が前後5マスになる（1回まで）', job: 'assassin', max: 1, grant: { type: 'perk', key: 'poisonRange', by: 1 } },
   { id: 'shadow_long', name: '長い影', blurb: 'シャドウステップの射程+2（1回まで）', job: 'assassin', max: 1, grant: { type: 'perk', key: 'shadowRange', by: 2 } },
   { id: 'foot_plus', name: '歩法のキレ', blurb: '暗殺者の歩法の追加移動が+1（1回まで）', job: 'assassin', max: 1, grant: { type: 'perk', key: 'footBonus', by: 1 } },
 

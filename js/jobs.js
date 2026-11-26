@@ -111,8 +111,7 @@ export const JOBS = {
         ct: 2,
         range: 4,
         damage: 3,
-        penalty: 2,
-        desc: '前後4マスの相手1人に3ダメージ。次の出目合計が-2。',
+        desc: '前後4マスの相手1人に3ダメージ。',
       },
       {
         id: 'shadow',
