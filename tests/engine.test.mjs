@@ -303,17 +303,13 @@ describe('アサシン', () => {
     assert.equal(s.players[1].hp, 4);
   });
 
-  it('毒刃はダメージと次の出目-2', () => {
+  it('毒刃はダメージのみ（出目ペナルティなし）', () => {
     const s = setup(['assassin', 'vanguard']);
     s.players[0].pos = 0;
     s.players[1].pos = 3;
     act(s, 0, { type: 'skill', id: 'poison', target: 1 });
     assert.equal(s.players[1].hp, s.players[1].maxHp - 3);
-    assert.equal(s.players[1].diceModNext, -2);
-    act(s, 0, { type: 'roll' }, [2]);
-    act(s, 1, { type: 'roll' }, [3]);
-    assert.equal(s.players[1].pos, 4);
-    assert.equal(s.players[1].diceModNext, 0);
+    assert.equal(s.players[1].diceModNext || 0, 0);
   });
 
   it('毒刃は前後4マスを超えると届かない', () => {
@@ -737,5 +733,36 @@ describe('強化数値の表記', () => {
     const text = passiveDescFor(p, JOB_LIST.find((j) => j.id === 'magnet').passive);
     assert.match(text, /前後3\(2\)マス/);
     assert.match(text, /2\(1\)ダメージ/);
+  });
+});
+
+describe('手番演出', () => {
+  it('beginTurn は休みや効果より先に turn イベントを出す', () => {
+    const s = setup(['vanguard', 'trap']);
+    const seat = s.turn;
+    const next = s.players.find((p) => p.id !== seat);
+    next.downed = true;
+    next.hp = 0;
+    const { ok, events } = act(s, seat, { type: 'roll' }, [2]);
+    assert.equal(ok, true);
+    const rest = events.findIndex((e) => e.t === 'rest' && e.seat === next.id);
+    assert.ok(rest >= 0);
+    const turnForNext = events.findIndex((e) => e.t === 'turn' && e.seat === next.id);
+    assert.ok(turnForNext >= 0);
+    assert.ok(turnForNext < rest);
+  });
+
+  it('ダイス移動のあいだはまだ次の turn イベントが来ない並びになる', () => {
+    const s = setup(['vanguard', 'trap']);
+    const seat = s.turn;
+    const { ok, events } = act(s, seat, { type: 'roll' }, [3]);
+    assert.equal(ok, true);
+    const di = events.findIndex((e) => e.t === 'dice' && e.seat === seat);
+    const si = events.findIndex((e) => e.t === 'step' && e.seat === seat);
+    const ti = events.findIndex((e, i) => i > di && e.t === 'turn');
+    assert.ok(di >= 0);
+    assert.ok(si >= 0);
+    assert.ok(ti >= 0);
+    assert.ok(si < ti, 'step before next turn event');
   });
 });
