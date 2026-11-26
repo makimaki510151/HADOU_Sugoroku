@@ -45,11 +45,11 @@ export function badges(player) {
   if (player.downed || player.justRevived || player.hp <= 0) b.push('休み');
   if (player.ironGuard) b.push('ガード');
   if (player.loaded) b.push('イカサマ');
-  // 表記は「ダイス+N」（個数）と「出目+N」（出目補正）に揃える
+  // 表記: ダイス+N＝個数、出目+N＝永続の出目補正、次の出目±N＝このターンの合計補正
   if (player.extraDice) b.push(`ダイス+${player.extraDice}`);
   if (player.dicePlus) b.push(`出目+${player.dicePlus}`);
   if (player.diceModNext) {
-    b.push(`出目${player.diceModNext > 0 ? '+' : ''}${player.diceModNext}`);
+    b.push(`次の出目${player.diceModNext > 0 ? '+' : ''}${player.diceModNext}`);
   }
   if (player.oneShotGuard) b.push('お守り');
   if (player.trapIgnore) b.push(`罠無視${player.trapIgnore}`);

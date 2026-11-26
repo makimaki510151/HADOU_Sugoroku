@@ -28,11 +28,11 @@ export const UPGRADES = [
   { id: 'hop', name: 'ひと跳び', blurb: 'すぐに2マス進む', grant: { type: 'move', steps: 2 } },
   { id: 'leap', name: '大股', blurb: 'すぐに5マス進む', grant: { type: 'move', steps: 5 } },
   { id: 'mule', name: '荷運び', blurb: 'すぐに4マス進む', grant: { type: 'move', steps: 4 } },
-  { id: 'cheer', name: '気合い', blurb: '次に振るダイスの合計+2', grant: { type: 'mod', by: 2 } },
-  { id: 'whisper', name: 'ひそひそ', blurb: '次に振るダイスの合計+1', grant: { type: 'mod', by: 1 } },
-  { id: 'espresso', name: '強めの一杯', blurb: '次に振るダイスの合計+3', grant: { type: 'mod', by: 3 } },
-  { id: 'roar', name: '雄叫び', blurb: '次に振るダイスの合計+4', grant: { type: 'mod', by: 4 } },
-  { id: 'calm', name: '深呼吸', blurb: '次の出目へのマイナス補正を打ち消す', need: 'penalty', grant: { type: 'clearPenalty' } },
+  { id: 'cheer', name: '気合い', blurb: '次の出目+2（合計）', grant: { type: 'mod', by: 2 } },
+  { id: 'whisper', name: 'ひそひそ', blurb: '次の出目+1（合計）', grant: { type: 'mod', by: 1 } },
+  { id: 'espresso', name: '強めの一杯', blurb: '次の出目+3（合計）', grant: { type: 'mod', by: 3 } },
+  { id: 'roar', name: '雄叫び', blurb: '次の出目+4（合計）', grant: { type: 'mod', by: 4 } },
+  { id: 'calm', name: '深呼吸', blurb: '次の出目へのマイナスを打ち消す', need: 'penalty', grant: { type: 'clearPenalty' } },
   { id: 'spare_die', name: '予備ダイス', blurb: 'このラウンド、ダイス+1（振る個数が1増える）', grant: { type: 'stat', key: 'extraDice', by: 1 } },
 
   // —— ストック（消費後はまた出る） ——
