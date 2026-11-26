@@ -174,9 +174,103 @@ export const JOBS = {
       },
     ],
   },
+  magnet: {
+    id: 'magnet',
+    name: 'マグネット',
+    mark: '磁',
+    dice: [1, 6],
+    hp: 11,
+    blurb: '距離をねじる。引き寄せて、弾き飛ばす。',
+    passive: {
+      id: 'aura',
+      name: '磁力帯',
+      desc: '自分のターン開始時、前後2マス以内の相手に2ダメージ。',
+      range: 2,
+      damage: 2,
+    },
+    skills: [
+      {
+        id: 'pull',
+        kind: 'active',
+        name: '引き寄せ',
+        ct: 2,
+        range: 6,
+        steps: 3,
+        desc: '前後6マス以内の相手1人を、自分のほうへ最大3マス引き寄せる。',
+      },
+      {
+        id: 'push',
+        kind: 'active',
+        name: '弾き飛ばし',
+        ct: 3,
+        range: 3,
+        steps: 3,
+        desc: '前後3マス以内でいちばん近い相手を、自分から離れる向きへ3マス飛ばす。',
+      },
+      {
+        id: 'polarity',
+        kind: 'ult',
+        name: '極性反転',
+        ct: 5,
+        near: 5,
+        range: 10,
+        desc: '前後5マス以内に誰かいるとき。10マス以内でいちばん遠い相手と位置を入れ替える。',
+      },
+    ],
+  },
+  runner: {
+    id: 'runner',
+    name: 'ランナー',
+    mark: '走',
+    dice: [2, 7],
+    hp: 9,
+    blurb: '出目は2〜7。加速床を敷いて、自分だけが気持ちよく走る。',
+    passive: {
+      id: 'stride',
+      name: 'ストライド',
+      desc: 'ダイスで自然な7が出たら、その移動のあとさらに2マス進む。',
+      face: 7,
+      bonus: 2,
+    },
+    skills: [
+      {
+        id: 'sprint',
+        kind: 'active',
+        name: 'スプリント',
+        ct: 2,
+        steps: 4,
+        desc: 'すぐに4マス進む。その後、通常のダイスも振る。',
+      },
+      {
+        id: 'boost',
+        kind: 'active',
+        name: '加速床',
+        ct: 3,
+        range: 5,
+        steps: 3,
+        desc: '前方5マス以内の空マスに加速床。踏むと3マスさらに進み、床は消える。',
+      },
+      {
+        id: 'overdrive',
+        kind: 'ult',
+        name: 'オーバーラン',
+        ct: 5,
+        needRank: 2,
+        dice: 2,
+        desc: '2位以下のとき。基礎ダイス2個の合計だけ進み、通ったマイナスマスを壊す。ターン終了。',
+      },
+    ],
+  },
 };
 
-export const JOB_LIST = [JOBS.vanguard, JOBS.trap, JOBS.assassin, JOBS.gambler];
+export const JOB_LIST = [
+  JOBS.vanguard,
+  JOBS.trap,
+  JOBS.assassin,
+  JOBS.gambler,
+  JOBS.magnet,
+  JOBS.runner,
+];
 
 export function jobById(id) {
   return JOBS[id] || null;

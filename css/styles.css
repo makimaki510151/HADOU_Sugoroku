@@ -168,6 +168,46 @@ button:disabled { opacity: 0.45; cursor: default; }
 .howto-block h3 { margin: 0 0 0.25rem; font-size: 1rem; }
 .howto-block ul { margin: 0; padding-left: 1.15rem; }
 .howto-block li { margin: 0.2rem 0; line-height: 1.5; }
+.job-card {
+  border: 3px solid var(--ink);
+  border-radius: 16px;
+  background: #fffdf8;
+  padding: 0.7rem 0.8rem 0.85rem;
+  margin: 0.7rem 0;
+  box-shadow: 4px 4px 0 var(--ink);
+}
+.job-card-top {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem 0.7rem;
+  align-items: baseline;
+  margin-bottom: 0.35rem;
+}
+.job-card-top h3 {
+  margin: 0;
+  font-family: var(--display);
+  font-weight: 400;
+  font-size: 1.25rem;
+}
+.job-meta { color: var(--muted); font-size: 0.85rem; }
+.job-blurb { margin: 0 0 0.45rem; line-height: 1.45; }
+.job-skill {
+  border-top: 2px dashed rgba(34, 24, 20, 0.25);
+  padding: 0.35rem 0 0;
+  margin-top: 0.35rem;
+  font-size: 0.88rem;
+  line-height: 1.45;
+}
+.job-skill strong { font-family: var(--display); font-weight: 400; }
+.job-skill .tag {
+  display: inline-block;
+  border: 2px solid var(--ink);
+  border-radius: 999px;
+  padding: 0 0.4rem;
+  margin-right: 0.25rem;
+  background: var(--yolk);
+  font-size: 0.72rem;
+}
 .row-actions { display: flex; flex-wrap: wrap; gap: 0.45rem; margin-top: 0.8rem; }
 .field { display: flex; flex-direction: column; gap: 0.25rem; margin: 0.55rem 0; font-size: 0.92rem; }
 .field-label { font-size: 0.86rem; color: var(--muted); }

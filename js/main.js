@@ -147,6 +147,22 @@ function renderPatch() {
   `).join('');
 }
 
+function renderJobsCatalog() {
+  $('#jobs-catalog').innerHTML = JOB_LIST.map((job) => `
+    <article class="job-card">
+      <div class="job-card-top">
+        <h3>${escapeHtml(job.mark)} ${escapeHtml(job.name)}</h3>
+        <span class="job-meta">ダイス ${job.dice[0]}〜${job.dice[1]} / HP${job.hp}</span>
+      </div>
+      <p class="job-blurb">${escapeHtml(job.blurb)}</p>
+      <div class="job-skill"><span class="tag">常時</span><strong>${escapeHtml(job.passive.name)}</strong> — ${escapeHtml(job.passive.desc)}</div>
+      ${job.skills.map((sk) => `
+        <div class="job-skill"><span class="tag">${sk.kind === 'ult' ? '必殺' : '通常'}</span><strong>${escapeHtml(sk.name)}</strong>（CT${sk.ct}） — ${escapeHtml(sk.desc)}</div>
+      `).join('')}
+    </article>
+  `).join('');
+}
+
 function renderLobby() {
   const host = app.mode === 'host';
   $('#lobby-title').textContent = host ? '部屋を開く' : '部屋に入る';
@@ -992,7 +1008,16 @@ function bindBoard() {
     if (moved || !app.game) return;
     const index = hitTile(app.cam, p.x, p.y);
     if (index < 0) return;
-    $('#inspect').textContent = describeTile(app.game, index);
+    const detail = describeTile(app.game, index);
+    $('#inspect').textContent = detail;
+    const tile = app.game.tiles?.[index];
+    if (tile && !tile.hidden && !app.targeting && !app.busy) {
+      const kindLabel = tile.kind === 'spike' ? 'スパイク'
+        : tile.kind === 'curse' ? '逆走の呪印'
+          : tile.kind === 'boost' ? '加速床'
+            : '仕掛け';
+      flash('マスの仕掛け', `${index + 1}マス ・ ${kindLabel}`, detail);
+    }
     if (app.targeting?.tiles?.has(index)) {
       const seat = currentPlayer(app.game).id;
       const tile = index;
@@ -1058,8 +1083,10 @@ function bind() {
   $('#btn-join').onclick = () => { audio.sfx.click(); openLobby('guest'); };
   $('#btn-local').onclick = () => { audio.sfx.click(); showScreen('screen-setup'); renderSetup(); };
   $('#btn-howto').onclick = () => { audio.sfx.click(); showScreen('screen-howto'); };
+  $('#btn-jobs').onclick = () => { audio.sfx.click(); renderJobsCatalog(); showScreen('screen-jobs'); };
   $('#btn-patch').onclick = () => { audio.sfx.click(); renderPatch(); showScreen('screen-patch'); };
   $('#btn-howto-back').onclick = () => showScreen('screen-title');
+  $('#btn-jobs-back').onclick = () => showScreen('screen-title');
   $('#btn-patch-back').onclick = () => showScreen('screen-title');
   $('#btn-setup-back').onclick = () => showScreen('screen-title');
   $('#btn-lobby-back').onclick = () => {

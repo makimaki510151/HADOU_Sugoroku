@@ -16,6 +16,8 @@ export const UPGRADES = [
   { id: 'spike_plus', name: '研いだ杭', blurb: 'これから置くスパイクのダメージ+3', job: 'trap', once: true },
   { id: 'blade_plus', name: '刃の油', blurb: '毒刃・歩法・処刑のダメージ+3', job: 'assassin', once: true },
   { id: 'zero_guard', name: 'ゼロ保険', blurb: '次のオールインの0を1回だけ1として扱う', job: 'gambler', once: true },
+  { id: 'field_plus', name: '強い磁場', blurb: '磁力帯のダメージ+1', job: 'magnet', once: true },
+  { id: 'sprint_plus', name: '長いストライド', blurb: 'スプリントが6マスになる', job: 'runner', once: true },
 ];
 
 export function upgradeById(id) {
@@ -37,6 +39,8 @@ export function upgradePool(player) {
     if (u.id === 'floor' && (player.floorRolls || 0) >= 3) return false;
     if (u.id === 'ct_cut' && (player.ctCut || 0) >= 1) return false;
     if (u.id === 'zero_guard' && (player.zeroInsure || 0) >= 1) return false;
+    if (u.id === 'field_plus' && (player.perks?.fieldPlus || 0) >= 1) return false;
+    if (u.id === 'sprint_plus' && (player.perks?.sprintPlus || 0) >= 1) return false;
     return true;
   });
 }

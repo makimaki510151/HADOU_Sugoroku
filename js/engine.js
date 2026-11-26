@@ -202,6 +202,50 @@ function curseTiles(state, seat) {
   return out;
 }
 
+function boostTiles(state, seat, range = 5) {
+  const pos = state.players[seat].pos;
+  const out = [];
+  for (let d = 1; d <= range; d++) {
+    const i = pos + d;
+    if (i < 0 || i >= GOAL) continue;
+    if (state.tiles[i]) continue;
+    out.push(i);
+  }
+  return out;
+}
+
+function nearestAny(state, seat, range) {
+  const pos = state.players[seat].pos;
+  let best = null;
+  let bestD = Infinity;
+  for (const o of state.players) {
+    if (o.id === seat || o.finished || o.hp <= 0) continue;
+    const d = Math.abs(o.pos - pos);
+    if (d === 0 || d > range) continue;
+    if (d < bestD) {
+      best = o;
+      bestD = d;
+    }
+  }
+  return best;
+}
+
+function farthestWithin(state, seat, range) {
+  const pos = state.players[seat].pos;
+  let best = null;
+  let bestD = -1;
+  for (const o of state.players) {
+    if (o.id === seat || o.finished || o.hp <= 0) continue;
+    const d = Math.abs(o.pos - pos);
+    if (d === 0 || d > range) continue;
+    if (d > bestD) {
+      best = o;
+      bestD = d;
+    }
+  }
+  return best;
+}
+
 function nearestAhead(state, seat, range) {
   const pos = state.players[seat].pos;
   let best = null;
@@ -264,6 +308,24 @@ export function skillLockReason(state, seat, skillId) {
   if (skillId === 'curse' && curseTiles(state, seat).length === 0) {
     return '前に置けるマスがない';
   }
+  if (skillId === 'boost' && boostTiles(state, seat, sk.range || 5).length === 0) {
+    return '前に置ける空マスがない';
+  }
+  if (skillId === 'pull' && playersInRange(state, seat, sk.range || 6).length === 0) {
+    return '引き寄せる相手がいない';
+  }
+  if (skillId === 'push' && !nearestAny(state, seat, sk.range || 3)) {
+    return '飛ばす相手がいない';
+  }
+  if (skillId === 'polarity') {
+    if (!nearestAny(state, seat, sk.near || 5)) return '近くに誰もいない';
+    const far = farthestWithin(state, seat, sk.range || 10);
+    if (!far) return '入れ替わる相手がいない';
+    if (far.ironGuard) return `${far.name} はガード中`;
+  }
+  if (skillId === 'overdrive' && rankOf(state, seat) < (sk.needRank || 2)) {
+    return '2位以下のとき';
+  }
   return '';
 }
 
@@ -286,6 +348,18 @@ export function listActions(state, seat) {
     }
     if (sk.id === 'curse') {
       for (const tile of curseTiles(state, seat)) actions.push({ type: 'skill', id: 'curse', tile });
+      continue;
+    }
+    if (sk.id === 'boost') {
+      for (const tile of boostTiles(state, seat, sk.range || 5)) {
+        actions.push({ type: 'skill', id: 'boost', tile });
+      }
+      continue;
+    }
+    if (sk.id === 'pull') {
+      for (const o of playersInRange(state, seat, sk.range || 6)) {
+        actions.push({ type: 'skill', id: 'pull', target: o.id });
+      }
       continue;
     }
     if (sk.id === 'poison') {
@@ -397,7 +471,11 @@ function enterTile(state, seat, pos, events, opts) {
   const tile = state.tiles[pos];
   if (!tile) return false;
   const player = state.players[seat];
-  if (tile.owner === seat && player.job === 'trap') {
+  if (
+    tile.owner === seat
+    && player.job === 'trap'
+    && (tile.kind === 'spike' || tile.kind === 'curse')
+  ) {
     const got = heal(state, seat, jobOf(player).passive.heal || 2, events, 'trap');
     if (got) events.push(pushLog(state, `${player.name} は自分の罠でHP+${got}`, 'good'));
     return false;
@@ -413,6 +491,14 @@ function enterTile(state, seat, pos, events, opts) {
     events.push({ t: 'smash', pos, kind: tile.kind, seat });
     events.push(pushLog(state, `${player.name} が${pos + 1}マスの罠を踏み砕いた`, 'ult'));
     return false;
+  }
+  if (tile.kind === 'boost') {
+    const steps = tile.steps || 3;
+    state.tiles[pos] = null;
+    events.push({ t: 'spring', kind: 'boost', seat, pos, steps });
+    events.push(pushLog(state, `${player.name} が加速床で+${steps}`, 'good'));
+    moveBy(state, seat, steps, events, { chain: opts.chain || 0 });
+    return true;
   }
   if (player.ironGuard) {
     events.push({ t: 'block', seat, reason: 'guard' });
@@ -534,6 +620,17 @@ function beginTurn(state, events) {
     const extra = bonus ? ` 出目+${bonus}` : '';
     events.push(pushLog(state, `${player.name} が復帰（HP${player.hp}）${extra}`, 'good'));
   }
+  if (player.job === 'magnet' && !player.downed && player.hp > 0) {
+    const aura = jobOf(player).passive;
+    const range = aura.range || 2;
+    const dmg = (aura.damage || 2) + (player.perks.fieldPlus || 0);
+    for (const o of state.players) {
+      if (o.id === player.id || o.finished || o.hp <= 0) continue;
+      if (Math.abs(o.pos - player.pos) <= range && Math.abs(o.pos - player.pos) > 0) {
+        hurt(state, o.id, dmg, player.id, events, 'aura');
+      }
+    }
+  }
   state.phase = 'act';
   events.push({ t: 'turn', seat: player.id, round: state.round });
 }
@@ -608,6 +705,8 @@ function applyUpgrade(state, seat, upgradeId, events) {
   else if (upgradeId === 'dash_plus') player.perks.dashPlus = (player.perks.dashPlus || 0) + 3;
   else if (upgradeId === 'spike_plus') player.perks.spikePlus = (player.perks.spikePlus || 0) + 3;
   else if (upgradeId === 'blade_plus') player.perks.bladePlus = (player.perks.bladePlus || 0) + 3;
+  else if (upgradeId === 'field_plus') player.perks.fieldPlus = 1;
+  else if (upgradeId === 'sprint_plus') player.perks.sprintPlus = 1;
   else if (upgradeId === 'zero_guard') player.zeroInsure += 1;
   events.push({ t: 'upgrade', seat, upgradeId });
   events.push(pushLog(state, `${player.name} は「${up.name}」を掴んだ`, 'good'));
@@ -705,6 +804,16 @@ function doRoll(state, seat, events) {
   events.push(pushLog(state, `${player.name} の出目 ${faceText} → ${sum}マス`, 'info'));
   if (sum > 0) moveBy(state, seat, sum, events, {});
   else events.push(pushLog(state, `${player.name} はその場で足踏み`, 'info'));
+  if (
+    player.job === 'runner'
+    && !player.downed
+    && state.phase !== 'gameover'
+    && faces.some((f) => f.natural === (job.passive.face || 7))
+  ) {
+    const bonus = job.passive.bonus || 2;
+    events.push(pushLog(state, `${player.name} のストライド +${bonus}`, 'good'));
+    moveBy(state, seat, bonus, events, {});
+  }
   if (state.phase !== 'gameover') endTurn(state, events);
 }
 
@@ -724,7 +833,7 @@ function doSkill(state, seat, action, events) {
     const tiles = spikeTiles(state, seat);
     if (!tiles.includes(action.tile)) return 'そこには置けない';
     const damage = (sk.damage || 6) + (player.dmgPlus || 0) + (player.perks.spikePlus || 0);
-    state.tiles[action.tile] = { kind: 'spike', owner: seat, damage };
+    state.tiles[action.tile] = { kind: 'spike', owner: seat, damage, hidden: false };
     player.stats.traps += 1;
     setCt(player, id);
     events.push({ t: 'place', seat, tile: action.tile, kind: 'spike' });
@@ -734,11 +843,23 @@ function doSkill(state, seat, action, events) {
   if (id === 'curse') {
     const tiles = curseTiles(state, seat);
     if (!tiles.includes(action.tile)) return 'そこには置けない';
-    state.tiles[action.tile] = { kind: 'curse', owner: seat, back: sk.back || 3 };
+    state.tiles[action.tile] = { kind: 'curse', owner: seat, back: sk.back || 3, hidden: false };
     player.stats.traps += 1;
     setCt(player, id);
     events.push({ t: 'place', seat, tile: action.tile, kind: 'curse' });
     events.push(pushLog(state, `${player.name} が${action.tile + 1}マスに呪印`, 'skill'));
+    return '';
+  }
+  if (id === 'boost') {
+    const tiles = boostTiles(state, seat, sk.range || 5);
+    if (!tiles.includes(action.tile)) return 'そこには置けない';
+    state.tiles[action.tile] = {
+      kind: 'boost', owner: seat, steps: sk.steps || 3, hidden: false,
+    };
+    player.stats.traps += 1;
+    setCt(player, id);
+    events.push({ t: 'place', seat, tile: action.tile, kind: 'boost' });
+    events.push(pushLog(state, `${player.name} が${action.tile + 1}マスに加速床`, 'skill'));
     return '';
   }
   if (id === 'poison') {
@@ -912,6 +1033,86 @@ function doSkill(state, seat, action, events) {
     events.push(pushLog(state, `${player.name} のオールイン ${faces.map((f) => f.value).join('+')} → ${sum}`, 'ult'));
     if (sum > 0) moveBy(state, seat, sum, events, {});
     if (state.phase !== 'gameover') endTurn(state, events);
+    return '';
+  }
+  if (id === 'sprint') {
+    setCt(player, id);
+    events.push({ t: 'skill', seat, id });
+    events.push(pushLog(state, `${player.name} のスプリント！`, 'skill'));
+    const steps = player.perks.sprintPlus ? 6 : (sk.steps || 4);
+    moveBy(state, seat, steps, events, {});
+    finishSkillTurn(state, player, events);
+    return '';
+  }
+  if (id === 'overdrive') {
+    if (rankOf(state, seat) < (sk.needRank || 2)) return '2位以下のとき';
+    setCt(player, id);
+    const [min, max] = jobOf(player).dice;
+    const faces = [];
+    let sum = 0;
+    const diceN = sk.dice || 2;
+    for (let i = 0; i < diceN; i++) {
+      const natural = rollOne(state, min, max, false);
+      const value = applyFace(player, natural);
+      faces.push({ natural, value });
+      sum += value;
+    }
+    sum = consumeMod(player, sum);
+    events.push({ t: 'dice', seat, faces, total: sum, kind: 'overdrive' });
+    events.push({ t: 'skill', seat, id, ult: true });
+    events.push(pushLog(state, `${player.name} のオーバーラン ${faces.map((f) => f.value).join('+')} → ${sum}`, 'ult'));
+    if (sum > 0) moveBy(state, seat, sum, events, { destroyBad: true });
+    if (state.phase !== 'gameover') endTurn(state, events);
+    return '';
+  }
+  if (id === 'pull') {
+    const targets = playersInRange(state, seat, sk.range || 6);
+    const target = state.players[action.target];
+    if (!target || !targets.includes(target)) return 'その相手には届かない';
+    setCt(player, id);
+    events.push({ t: 'skill', seat, id, target: target.id });
+    if (target.ironGuard) {
+      events.push({ t: 'block', seat: target.id, reason: 'guard' });
+      events.push(pushLog(state, `${player.name} の引き寄せは${target.name}のガードに弾かれた`, 'skill'));
+      return '';
+    }
+    const steps = Math.min(sk.steps || 3, Math.abs(target.pos - player.pos));
+    const delta = target.pos > player.pos ? -steps : steps;
+    events.push(pushLog(state, `${player.name} が${target.name}を引き寄せた`, 'skill'));
+    if (steps > 0) moveBy(state, target.id, delta, events, {});
+    return '';
+  }
+  if (id === 'push') {
+    const target = nearestAny(state, seat, sk.range || 3);
+    if (!target) return '飛ばす相手がいない';
+    setCt(player, id);
+    events.push({ t: 'skill', seat, id, target: target.id });
+    if (target.ironGuard) {
+      events.push({ t: 'block', seat: target.id, reason: 'guard' });
+      events.push(pushLog(state, `${player.name} の弾き飛ばしは${target.name}のガードに弾かれた`, 'skill'));
+      return '';
+    }
+    const steps = sk.steps || 3;
+    const delta = target.pos >= player.pos ? steps : -steps;
+    events.push(pushLog(state, `${player.name} が${target.name}を弾き飛ばした`, 'skill'));
+    moveBy(state, target.id, delta, events, {});
+    return '';
+  }
+  if (id === 'polarity') {
+    if (!nearestAny(state, seat, sk.near || 5)) return '近くに誰もいない';
+    const target = farthestWithin(state, seat, sk.range || 10);
+    if (!target) return '入れ替わる相手がいない';
+    if (target.ironGuard) return `${target.name} はガード中で入れ替えられない`;
+    setCt(player, id);
+    const fromA = player.pos;
+    const fromB = target.pos;
+    player.pos = fromB;
+    target.pos = fromA;
+    events.push({
+      t: 'swap', seat, target: target.id, fromA, fromB, posA: player.pos, posB: target.pos,
+    });
+    events.push({ t: 'skill', seat, id, target: target.id, ult: true });
+    events.push(pushLog(state, `${player.name} の極性反転。${target.name}と入れ替わった`, 'ult'));
     return '';
   }
   return '使えない技';

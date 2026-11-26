@@ -70,6 +70,14 @@ function centerOf(i) {
   return { x: r.x + r.w / 2, y: r.y + r.h / 2 };
 }
 
+function trapMark(tile) {
+  if (!tile || tile.hidden) return null;
+  if (tile.kind === 'spike') return { label: '杭', fill: '#ff6b6b', ink: '#fff8ea' };
+  if (tile.kind === 'curse') return { label: '呪', fill: '#6c5ce7', ink: '#fff8ea' };
+  if (tile.kind === 'boost') return { label: '走', fill: '#2fbf71', ink: '#fff8ea' };
+  return { label: '？', fill: '#221814', ink: '#fff8ea' };
+}
+
 /**
  * @param {CanvasRenderingContext2D} ctx
  * @param {{
@@ -158,14 +166,16 @@ export function drawBoard(ctx, opts) {
   for (let i = 0; i < 100; i++) {
     const r = tileRect(i);
     const tile = state?.tiles?.[i];
+    const mark = trapMark(tile);
     ctx.save();
     ctx.translate(r.x + r.w / 2, r.y + r.h / 2);
     ctx.rotate((hash(i + 21) - 0.5) * 0.06);
     roundRect(ctx, -r.w / 2, -r.h / 2, r.w, r.h, 12);
     if (i === 99) ctx.fillStyle = '#ff4d6d';
     else if (i === 0) ctx.fillStyle = '#2fbf71';
-    else if (tile?.kind === 'spike') ctx.fillStyle = '#ffd0cc';
-    else if (tile?.kind === 'curse') ctx.fillStyle = '#d9d2ff';
+    else if (mark?.label === '杭') ctx.fillStyle = '#ffd0cc';
+    else if (mark?.label === '呪') ctx.fillStyle = '#d9d2ff';
+    else if (mark?.label === '走') ctx.fillStyle = '#c8f5d8';
     else ctx.fillStyle = ROW_COLORS[r.row % ROW_COLORS.length];
     ctx.fill();
     ctx.lineWidth = highlight.has(i) ? 6 : 3;
@@ -179,20 +189,32 @@ export function drawBoard(ctx, opts) {
     ctx.fillStyle = i === 99 || i === 0 ? '#fffaf0' : '#221814';
     ctx.font = '700 14px "Yusei Magic", sans-serif';
     ctx.textAlign = 'center';
-    ctx.fillText(String(i + 1), 0, -8);
-    ctx.font = '700 18px "Yusei Magic", sans-serif';
-    if (i === 0) ctx.fillText('出', 0, 16);
-    else if (i === 99) ctx.fillText('着', 0, 16);
-    else if (tile?.kind === 'spike') ctx.fillText('杭', 0, 16);
-    else if (tile?.kind === 'curse') ctx.fillText('呪', 0, 16);
-    else if (i === 24 || i === 49 || i === 74) {
+    ctx.fillText(String(i + 1), 0, -14);
+    if (i === 0) {
+      ctx.font = '700 18px "Yusei Magic", sans-serif';
+      ctx.fillText('出', 0, 16);
+    } else if (i === 99) {
+      ctx.font = '700 18px "Yusei Magic", sans-serif';
+      ctx.fillText('着', 0, 16);
+    } else if (i === 24 || i === 49 || i === 74) {
       ctx.font = '700 12px "Yusei Magic", sans-serif';
-      ctx.fillText('中間', 0, 16);
+      ctx.fillText('中間', 0, 8);
     } else {
       ctx.globalAlpha = 0.35;
       ctx.font = '700 12px "Yusei Magic", sans-serif';
-      ctx.fillText('·', 0, 14);
+      ctx.fillText('·', 0, 6);
       ctx.globalAlpha = 1;
+    }
+    if (mark) {
+      roundRect(ctx, 8, 8, 26, 22, 8);
+      ctx.fillStyle = mark.fill;
+      ctx.fill();
+      ctx.lineWidth = 2;
+      ctx.strokeStyle = '#221814';
+      ctx.stroke();
+      ctx.fillStyle = mark.ink;
+      ctx.font = '700 13px "Yusei Magic", sans-serif';
+      ctx.fillText(mark.label, 21, 24);
     }
     ctx.restore();
   }
@@ -251,7 +273,12 @@ function drawToken(ctx, x, y, player, active) {
   ctx.strokeStyle = '#221814';
   ctx.lineWidth = 2;
   ctx.stroke();
-  const mark = player.job === 'trap' ? '罠' : player.job === 'assassin' ? '刃' : player.job === 'gambler' ? '運' : '盾';
+  const mark = player.job === 'trap' ? '罠'
+    : player.job === 'assassin' ? '刃'
+      : player.job === 'gambler' ? '運'
+        : player.job === 'magnet' ? '磁'
+          : player.job === 'runner' ? '走'
+            : '盾';
   ctx.font = '700 10px "Yusei Magic", sans-serif';
   ctx.textAlign = 'center';
   ctx.fillStyle = '#fffaf0';
@@ -270,12 +297,18 @@ export function describeTile(state, index) {
   const who = state?.players?.filter((p) => p.pos === index).map((p) => p.name).join('、');
   let body = `${index + 1}マス`;
   if (!tile) body += ' なんもない';
+  else if (tile.hidden) body += ' なにか仕掛けてありそう…';
   else if (tile.kind === 'spike') {
     const owner = state.players[tile.owner]?.name || '誰か';
-    body += ` スパイク（${owner} / ${tile.damage}ダメ・停止）`;
+    body += ` 【杭】スパイク（${owner} / ${tile.damage}ダメ・強制停止）`;
   } else if (tile.kind === 'curse') {
     const owner = state.players[tile.owner]?.name || '誰か';
-    body += ` 呪印（${owner} / ${tile.back}マス戻る）`;
+    body += ` 【呪】逆走の呪印（${owner} / ${tile.back}マス戻る）`;
+  } else if (tile.kind === 'boost') {
+    const owner = state.players[tile.owner]?.name || '誰か';
+    body += ` 【走】加速床（${owner} / +${tile.steps || 3}マス・消える）`;
+  } else {
+    body += ' 仕掛けあり';
   }
   if (who) body += ` ｜ ${who}`;
   return body;

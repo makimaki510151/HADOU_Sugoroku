@@ -31,7 +31,19 @@
       <button class="btn large" id="btn-join" type="button">部屋に入る</button>
       <button class="btn yolk large" id="btn-local" type="button">この機で遊ぶ</button>
       <button class="btn ghost" id="btn-howto" type="button">遊び方</button>
+      <button class="btn ghost" id="btn-jobs" type="button">職一覧</button>
       <button class="btn ghost" id="btn-patch" type="button">パッチノート</button>
+    </div>
+  </section>
+
+  <section id="screen-jobs" class="screen">
+    <div class="panel howto">
+      <h2>職一覧</h2>
+      <p class="howto-lead">どれもパッシブ1・通常2・必殺1。開始前に1つ選ぶ。</p>
+      <div id="jobs-catalog"></div>
+      <div class="row-actions">
+        <button class="btn primary" id="btn-jobs-back" type="button">戻る</button>
+      </div>
     </div>
   </section>
 
@@ -44,7 +56,8 @@
         <ul>
           <li>ターン開始でCTが1減る。休み・ガードの期限もここで処理する。</li>
           <li>自分のスキルを好きなだけ使ってから、ダイスを振る。突撃とオールインは、その振った目が移動になって番が終わる。</li>
-          <li>止まったマスの罠が発動する。スパイクはダメージで強制停止、呪印は3マス戻す。</li>
+          <li>止まったマスの罠が発動する。スパイクはダメージで強制停止、呪印は3マス戻す。加速床はさらに進む。</li>
+          <li>仕掛けがあるマスにはマークがつく（隠す指定がない限り）。タップすると中身がわかる。</li>
         </ul>
       </section>
       <section class="howto-block">
@@ -61,6 +74,9 @@
           <li><strong>トラップマスター</strong> 1〜6 / HP10。自分の罠は踏んでも得。スパイク、呪印、起爆。</li>
           <li><strong>アサシン</strong> 2〜5 / HP8。同じマスで刺して2マス進む。毒、入れ替え、処刑。</li>
           <li><strong>ギャンブラー</strong> 0〜8 / HP10。0で回復。イカサマ、道連れ、オールイン。</li>
+          <li><strong>マグネット</strong> 1〜6 / HP11。近い相手に傷。引き寄せ、弾き飛ばし、遠い相手と入れ替え。</li>
+          <li><strong>ランナー</strong> 2〜7 / HP9。7でさらに進む。スプリント、加速床、2位以下のオーバーラン。</li>
+          <li>くわしくはタイトルの「職一覧」。</li>
         </ul>
       </section>
       <section class="howto-block">
