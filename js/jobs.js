@@ -8,7 +8,7 @@ export const JOBS = {
     name: 'ヴァンガード',
     mark: '盾',
     dice: [1, 6],
-    hp: 10,
+    hp: 12,
     blurb: '正面から折る。硬くて、抜けがいい。',
     passive: {
       id: 'spirit',
@@ -94,7 +94,7 @@ export const JOBS = {
     name: 'アサシン',
     mark: '刃',
     dice: [2, 5],
-    hp: 10,
+    hp: 8,
     blurb: '出目は2〜5で読みやすい。隣に立ったら刺して、さらに前へ。',
     passive: {
       id: 'footwork',

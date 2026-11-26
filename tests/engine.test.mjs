@@ -385,7 +385,7 @@ describe('ラウンド', () => {
     s.players[1].pos = 5;
     act(s, 1, { type: 'roll' }, [0, 0]);
     assert.equal(s.turn, 0);
-    assert.equal(s.players[0].hp, 4);
+    assert.equal(s.players[0].hp, s.players[0].maxHp);
     assert.equal(s.players[0].diceModNext, 3);
     assert.equal(s.players[0].justRevived, false);
   });
