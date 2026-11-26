@@ -398,7 +398,7 @@ export function listActions(state, seat) {
       continue;
     }
     if (sk.id === 'poison') {
-      const range = (sk.range || 4) + (player.perks.poisonRange || 0);
+      const range = (sk.range || 4) + (cur.perks.poisonRange || 0);
       for (const o of playersInRange(state, seat, range)) {
         actions.push({ type: 'skill', id: 'poison', target: o.id });
       }

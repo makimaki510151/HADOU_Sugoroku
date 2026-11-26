@@ -857,11 +857,11 @@ function publish(events) {
 }
 
 function resolveAction(seat, action) {
-  if (!app.game || app.busy) return;
+  if (!app.game || app.busy) return false;
   const res = applyAction(app.game, seat, action);
   if (!res.ok) {
     if (controlling(app.game.players[seat])) toast(res.error || 'だめ');
-    return;
+    return false;
   }
   if (action.type === 'skill') {
     const ct = app.game.players[seat].ct[action.id] || 0;
@@ -871,6 +871,7 @@ function resolveAction(seat, action) {
   // 移動・罠などの演出が終わるまで手番マークを動かさない
   app.turnMarkSeat = seat;
   publish(res.events);
+  return true;
 }
 
 function sendLocal(seat, action) {
@@ -895,8 +896,12 @@ function scheduleCpu() {
     if (seat == null) return;
     app.cpuTimer = setTimeout(() => {
       if (app.busy) return scheduleCpu();
-      const upgradeId = chooseDraft(g, seat);
-      if (upgradeId) resolveAction(seat, { type: 'draft', upgradeId });
+      if (!app.game || app.game.phase !== 'draft') return scheduleCpu();
+      const upgradeId = chooseDraft(app.game, seat)
+        || app.game.drafts?.offers?.[seat]?.[0]
+        || null;
+      if (!upgradeId) return scheduleCpu();
+      if (!resolveAction(seat, { type: 'draft', upgradeId })) scheduleCpu();
     }, 650);
     return;
   }
@@ -910,15 +915,25 @@ function scheduleCpu() {
   app.cpuTimer = setTimeout(() => {
     if (app.busy || !app.game) return;
     const now = currentPlayer(app.game);
-    if (!now?.isCPU) return;
-    if (app.cpuCount >= 6) {
-      resolveAction(now.id, { type: 'roll' });
-      return;
+    if (!now?.isCPU || app.game.phase !== 'act') return;
+    let action = { type: 'roll' };
+    try {
+      if (app.cpuCount < 6) {
+        action = chooseCpuAction(app.game, now.id, app.game.cpuLevel || app.cpuLevel, app.cpuUsed)
+          || { type: 'roll' };
+      }
+    } catch (err) {
+      console.error('[cpu]', err);
+      action = { type: 'roll' };
     }
-    const action = chooseCpuAction(app.game, now.id, app.game.cpuLevel || app.cpuLevel, app.cpuUsed);
-    if (!action) return;
     if (action.type === 'skill') app.cpuCount += 1;
-    resolveAction(now.id, action);
+    const ok = resolveAction(now.id, action);
+    // 進行不能回避: スキル失敗や候補欠落時はロールへ落とす
+    if (!ok && action.type !== 'roll') {
+      if (!resolveAction(now.id, { type: 'roll' })) scheduleCpu();
+    } else if (!ok) {
+      scheduleCpu();
+    }
   }, 720);
 }
 
