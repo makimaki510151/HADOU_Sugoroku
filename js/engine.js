@@ -33,6 +33,13 @@ export function standings(state) {
   return [...state.players].sort((a, b) => b.pos - a.pos || a.id - b.id);
 }
 
+/** ラウンド開始時の手番順：いちばん後ろ → いちばん前（同着は席番号の大きいほうを後ろ扱い）。 */
+export function orderByLastFirst(state) {
+  return [...state.players]
+    .sort((a, b) => a.pos - b.pos || b.id - a.id)
+    .map((p) => p.id);
+}
+
 export function badges(player) {
   const b = [];
   if (player.downed || player.justRevived || player.hp <= 0) b.push('休み');
@@ -120,23 +127,30 @@ export function createGame({ players, seed = 1, cpuLevel = 'normal' }) {
   if (!players || players.length < 2 || players.length > 4) {
     throw new Error('2〜4人で始める');
   }
+  const roster = players.map((p, i) => blankPlayer(p, i));
   const state = {
     seed: (seed >>> 0) || 1,
     rng: (seed >>> 0) || 1,
     round: 1,
     turn: 0,
+    turnIndex: 0,
+    turnOrder: [],
     phase: 'act',
     cpuLevel: cpuLevel === 'easy' ? 'easy' : 'normal',
     tiles: Array.from({ length: TRACK_LEN }, () => null),
-    players: players.map((p, i) => blankPlayer(p, i)),
+    players: roster,
     drafts: null,
     winner: null,
     log: [],
     seq: 0,
     goal: GOAL,
   };
+  state.turnOrder = orderByLastFirst(state);
+  state.turnIndex = 0;
+  state.turn = state.turnOrder[0];
   const events = [];
   events.push(pushLog(state, '波動スタート。100マス目に先に乗った人が勝ち', 'system'));
+  events.push(pushLog(state, `手番は後ろの人から（${state.turnOrder.map((id) => state.players[id].name).join(' → ')}）`, 'system'));
   beginTurn(state, events);
   return { state, events };
 }
@@ -638,10 +652,22 @@ function beginTurn(state, events) {
 function endTurn(state, events) {
   if (state.phase === 'gameover') return;
   const n = state.players.length;
-  state.turn = (state.turn + 1) % n;
-  if (state.turn === 0) {
+  const order = state.turnOrder?.length === n
+    ? state.turnOrder
+    : orderByLastFirst(state);
+  state.turnOrder = order;
+  let idx = order.indexOf(state.turn);
+  if (idx < 0) idx = state.turnIndex || 0;
+  state.turnIndex = (idx + 1) % n;
+  if (state.turnIndex === 0) {
     state.round += 1;
+    state.turnOrder = orderByLastFirst(state);
+    state.turn = state.turnOrder[0];
+    const names = state.turnOrder.map((id) => state.players[id].name).join(' → ');
+    events.push(pushLog(state, `ラウンド${state.round}の手番: ${names}`, 'system'));
     if (state.round >= 2 && openRoundBonuses(state, events)) return;
+  } else {
+    state.turn = state.turnOrder[state.turnIndex];
   }
   beginTurn(state, events);
 }
