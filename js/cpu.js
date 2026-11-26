@@ -98,24 +98,69 @@ function scoreUpgrade(state, seat, id) {
   const gap = Math.max(...state.players.map((p) => p.pos)) - player.pos;
   const ratio = player.hp / player.maxHp;
   switch (id) {
-    case 'shortcut': return 5 + (gap >= 8 ? 4 : 0);
+    case 'shortcut':
+    case 'leap':
+    case 'mule':
+      return 5 + (gap >= 8 ? 4 : 0);
+    case 'hop': return 3 + (gap >= 8 ? 2 : 0);
     case 'dice_plus': return 7;
-    case 'ct_cut': return 6;
-    case 'punch': return 5;
-    case 'hp_up': return ratio < 0.7 ? 6 : 4;
-    case 'candy': return ratio < 0.55 ? 7 : 2;
-    case 'cheer': return 4;
+    case 'ct_cut':
+    case 'ult_cut':
+      return 6;
+    case 'punch':
+    case 'thick_skin':
+      return 5;
+    case 'trickle': return 4;
+    case 'hp_up':
+    case 'stretch':
+    case 'iron_ration':
+      return ratio < 0.7 ? 6 : 4;
+    case 'candy':
+    case 'bandage':
+    case 'sugar':
+    case 'feast':
+    case 'panic':
+      return ratio < 0.55 ? 7 : 2;
+    case 'cheer':
+    case 'whisper':
+    case 'espresso':
+    case 'roar':
+    case 'spare_die':
+      return 4;
+    case 'calm': return (player.diceModNext || 0) < 0 ? 8 : 1;
     case 'omamori': return ratio < 0.6 ? 6 : 3;
     case 'guts': return ratio < 0.45 ? 7 : 3;
-    case 'watchstep': return state.tiles.some(Boolean) ? 5 : 2;
-    case 'floor': return player.job === 'gambler' ? 6 : 3;
+    case 'watchstep':
+    case 'clear_eyes':
+      return state.tiles.some(Boolean) ? 5 : 2;
+    case 'floor':
+    case 'soft_land':
+      return player.job === 'gambler' ? 6 : 3;
     case 'dash_plus':
+    case 'dash_long':
+    case 'spirit_plus':
+    case 'guard_heal':
     case 'spike_plus':
     case 'sticky_trap':
+    case 'trap_kit':
+    case 'curse_plus':
+    case 'boom_plus':
     case 'blade_plus':
+    case 'poison_pen':
+    case 'shadow_long':
+    case 'foot_plus':
     case 'zero_guard':
+    case 'zero_vault':
+    case 'lucky_zero':
+    case 'roulette_plus':
     case 'field_plus':
+    case 'pull_plus':
+    case 'push_plus':
+    case 'field_wide':
     case 'sprint_plus':
+    case 'boost_plus':
+    case 'stride_plus':
+    case 'boost_far':
       return 6;
     default: return 1;
   }

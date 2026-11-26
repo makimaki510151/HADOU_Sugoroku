@@ -12,6 +12,7 @@ import { chooseCpuAction } from '../js/cpu.js';
 import { isMyTurnSeat } from '../js/turn.js';
 import { describeTile, tileRect } from '../js/board.js';
 import { JOB_LIST } from '../js/jobs.js';
+import { UPGRADES, upgradePool, isUpgradeAvailable, upgradeById } from '../js/upgrades.js';
 
 function setup(jobs, seed = 3) {
   const { state } = createGame({
@@ -573,5 +574,57 @@ describe('マグネットとランナー', () => {
     }
     assert.equal(s.turn, 0);
     assert.equal(s.players[1].hp, s.players[1].maxHp - 1);
+  });
+});
+
+describe('強化プール', () => {
+  it('強化の種類はおよそ3倍ある', () => {
+    assert.ok(UPGRADES.length >= 50, `got ${UPGRADES.length}`);
+  });
+
+  it('重複上限に達した強化は候補に出ない', () => {
+    const s = setup(['vanguard', 'trap']);
+    const p = s.players[0];
+    p.perks.dice_plus = 2;
+    p.dicePlus = 2;
+    p.perks.punch = 2;
+    p.dmgPlus = 2;
+    p.perks.thick_skin = 2;
+    p.armor = 2;
+    p.perks.ct_cut = 1;
+    p.ctCut = 1;
+    p.hp = p.maxHp;
+    const pool = upgradePool(p).map((u) => u.id);
+    assert.equal(pool.includes('dice_plus'), false);
+    assert.equal(pool.includes('punch'), false);
+    assert.equal(pool.includes('thick_skin'), false);
+    assert.equal(pool.includes('ct_cut'), false);
+    assert.equal(pool.includes('candy'), false);
+    assert.equal(isUpgradeAvailable(p, upgradeById('dash_plus')), true);
+  });
+
+  it('厚皮はダメージを減らし、じわ回復はターン開始に効く', () => {
+    const s2 = setup(['vanguard', 'trap']);
+    s2.players[0].pos = 0;
+    s2.players[1].pos = 2;
+    s2.players[1].armor = 1;
+    s2.players[1].hp = 10;
+    act(s2, 0, { type: 'skill', id: 'dash' }, []);
+    assert.equal(s2.players[1].hp, 10 - 2);
+
+    const s3 = setup(['vanguard', 'trap']);
+    s3.players[0].regen = 1;
+    s3.players[0].hp = 8;
+    s3.players[0].pos = 1;
+    s3.players[1].pos = 5;
+    act(s3, 0, { type: 'roll' }, [1]);
+    act(s3, 1, { type: 'roll' }, [0]);
+    if (s3.phase === 'draft') {
+      for (const seat of Object.keys(s3.drafts.offers).map(Number)) {
+        if (!s3.drafts.picks[seat]) act(s3, seat, { type: 'draft', upgradeId: s3.drafts.offers[seat][0] });
+      }
+    }
+    assert.equal(s3.turn, 0);
+    assert.equal(s3.players[0].hp, Math.min(s3.players[0].maxHp, 8 + 1));
   });
 });
