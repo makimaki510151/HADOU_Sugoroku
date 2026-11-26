@@ -1,4 +1,4 @@
-/** 波動すごろく — 100マスの蛇行コースを Canvas に描く */
+/** 覇道すごろく — 100マスの蛇行コースを Canvas に描く */
 
 export const BOARD_W = 1000;
 export const BOARD_H = 1120;
@@ -125,7 +125,7 @@ export function drawBoard(ctx, opts) {
   ctx.rotate(-0.03);
   ctx.fillStyle = '#221814';
   ctx.font = '700 28px "Dela Gothic One", sans-serif';
-  ctx.fillText('波動コース', 0, 0);
+  ctx.fillText('覇道コース', 0, 0);
   ctx.restore();
 
   ctx.save();

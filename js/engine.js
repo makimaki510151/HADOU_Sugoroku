@@ -1,5 +1,5 @@
 /**
- * 波動すごろく — 純ルールエンジン（DOMなし）。
+ * 覇道すごろく — 純ルールエンジン（DOMなし）。
  * ホスト（とローカル）がこれを権威にする。ゲストは結果の状態を描くだけ。
  *
  * コースはマス1〜100（内部index 0〜99）。99に到達した瞬間勝ち。ぴったり不要。
@@ -157,7 +157,7 @@ export function createGame({ players, seed = 1, cpuLevel = 'normal' }) {
   state.turnIndex = 0;
   state.turn = state.turnOrder[0];
   const events = [];
-  events.push(pushLog(state, '波動スタート。100マス目に先に乗った人が勝ち', 'system'));
+  events.push(pushLog(state, '覇道スタート。100マス目に先に乗った人が勝ち', 'system'));
   events.push(pushLog(state, `手番は後ろの人から（${state.turnOrder.map((id) => state.players[id].name).join(' → ')}）`, 'system'));
   beginTurn(state, events);
   return { state, events };

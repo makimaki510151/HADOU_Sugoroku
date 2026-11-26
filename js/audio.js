@@ -1,4 +1,4 @@
-/** 波動すごろく — Web Audio の SE / BGM。サンプル素材は使わない。 */
+/** 覇道すごろく — Web Audio の SE / BGM。サンプル素材は使わない。 */
 
 const STORAGE_KEY = 'hadou-sugoroku-vol';
 

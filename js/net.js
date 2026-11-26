@@ -1,4 +1,4 @@
-/** 波動すごろく — PeerJS による P2P 同期（ホスト権威） */
+/** 覇道すごろく — PeerJS による P2P 同期（ホスト権威） */
 
 const PEER_CDN = 'https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js';
 

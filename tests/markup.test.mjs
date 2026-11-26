@@ -57,4 +57,12 @@ describe('画面の骨', () => {
     assert.match(html, /id="btn-again"/);
     assert.match(html, /タイトルへ/);
   });
+
+  it('ブランドは覇道で、キャッチはぶち抜けまで', () => {
+    assert.match(html, /覇道すごろく/);
+    assert.match(html, /職を握って、100マスをぶち抜け。/);
+    assert.doesNotMatch(html, /波動/);
+    assert.doesNotMatch(html, /お金はない/);
+    assert.doesNotMatch(html, /うっとうしいスキル/);
+  });
 });
