@@ -23,6 +23,24 @@ function setup(jobs, seed = 3) {
       color: '#ff4d6d',
     })),
   });
+  // スキル単体テストは席0から操作する想定なので、ロビー順に固定する
+  state.turnOrder = state.players.map((p) => p.id);
+  state.turnIndex = 0;
+  state.turn = 0;
+  state.phase = 'act';
+  return state;
+}
+
+function setupNatural(jobs, seed = 3) {
+  const { state } = createGame({
+    seed,
+    players: jobs.map((job, i) => ({
+      name: `P${i}`,
+      job,
+      isCPU: false,
+      color: '#ff4d6d',
+    })),
+  });
   return state;
 }
 
@@ -95,7 +113,13 @@ describe('ヴァンガード', () => {
     act(s, 0, { type: 'skill', id: 'guard' });
     assert.equal(s.players[0].ironGuard, true);
     act(s, 0, { type: 'roll' }, [1]);
+    s.players[0].pos = 1;
+    s.players[1].pos = 8;
     act(s, 1, { type: 'roll' }, [1]);
+    if (s.phase === 'draft') {
+      const seat = Number(Object.keys(s.drafts.offers)[0]);
+      act(s, seat, { type: 'draft', upgradeId: s.drafts.offers[seat][0] });
+    }
     assert.equal(s.turn, 0);
     assert.equal(s.players[0].ironGuard, false);
   });
@@ -104,10 +128,16 @@ describe('ヴァンガード', () => {
     const s = setup(['vanguard', 'trap']);
     act(s, 0, { type: 'skill', id: 'dash' });
     act(s, 0, { type: 'roll' }, [1]);
-    s.players[1].pos = s.players[0].pos;
+    s.players[0].pos = 1;
+    s.players[1].pos = 8;
     act(s, 1, { type: 'roll' }, [0]);
+    if (s.phase === 'draft') {
+      const seat = Number(Object.keys(s.drafts.offers)[0]);
+      act(s, seat, { type: 'draft', upgradeId: s.drafts.offers[seat][0] });
+    }
     assert.equal(s.round, 2);
     assert.equal(s.phase, 'act');
+    assert.equal(s.turn, 0);
     assert.equal(s.players[0].ct.dash, 1);
   });
 
@@ -351,10 +381,12 @@ describe('ラウンド', () => {
     assert.equal(s.players[1].extraDice, 1);
     assert.equal(s.drafts.offers[0], undefined);
     assert.equal(s.drafts.offers[1].length, 3);
+    assert.deepEqual(s.turnOrder, [1, 0]);
+    assert.equal(s.turn, 1);
     const pick = s.drafts.offers[1][0];
     act(s, 1, { type: 'draft', upgradeId: pick });
     assert.equal(s.phase, 'act');
-    assert.equal(s.turn, 0);
+    assert.equal(s.turn, 1);
     assert.equal(s.drafts, null);
   });
 
@@ -369,22 +401,48 @@ describe('ラウンド', () => {
     assert.equal(s.players[0].extraDice, 1);
     assert.equal(s.players[1].extraDice, 1);
     assert.equal(s.drafts, null);
+    assert.deepEqual(s.turnOrder, [1, 0]);
+    assert.equal(s.turn, 1);
+  });
+
+  it('ラウンド開始の手番は後ろの人から前の人へ', () => {
+    const s = setupNatural(['vanguard', 'trap', 'assassin']);
+    assert.deepEqual(s.turnOrder, [2, 1, 0]);
+    assert.equal(s.turn, 2);
+    s.players[0].pos = 30;
+    s.players[1].pos = 10;
+    s.players[2].pos = 20;
+    s.turnOrder = [0, 1, 2];
+    s.turnIndex = 2;
+    s.turn = 2;
+    act(s, 2, { type: 'roll' }, [0]);
+    assert.equal(s.round, 2);
+    assert.deepEqual(s.turnOrder, [1, 2, 0]);
+    assert.equal(s.turn, 1);
   });
 
   it('休みの次の自分の番で復帰し、ヴァンガードは出目+3', () => {
     const s = setup(['vanguard', 'trap']);
     act(s, 0, { type: 'roll' }, [1]);
-    s.players[0].pos = 5;
-    s.players[1].pos = 5;
+    s.players[0].pos = 3;
+    s.players[1].pos = 10;
     s.players[0].downed = true;
     s.players[0].hp = 0;
     act(s, 1, { type: 'roll' }, [0]);
+    assert.equal(s.phase, 'draft');
+    assert.equal(s.turn, 0);
+    act(s, 0, { type: 'draft', upgradeId: s.drafts.offers[0][0] });
+    // 席0の番で休み処理 → justRevived のまま席1へ
     assert.equal(s.players[0].justRevived, true);
     assert.equal(s.players[0].hp, 0);
     assert.equal(s.turn, 1);
-    s.players[0].pos = 5;
-    s.players[1].pos = 5;
+    s.players[0].pos = 3;
+    s.players[1].pos = 10;
     act(s, 1, { type: 'roll' }, [0, 0]);
+    if (s.phase === 'draft') {
+      const seat = Number(Object.keys(s.drafts.offers)[0]);
+      act(s, seat, { type: 'draft', upgradeId: s.drafts.offers[seat][0] });
+    }
     assert.equal(s.turn, 0);
     assert.equal(s.players[0].hp, s.players[0].maxHp);
     assert.equal(s.players[0].diceModNext, 3);

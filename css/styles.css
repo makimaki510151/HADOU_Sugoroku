@@ -55,6 +55,7 @@ button:disabled { opacity: 0.45; cursor: default; }
   align-items: flex-end;
   justify-content: flex-start;
   padding: clamp(1.2rem, 4vw, 3.2rem);
+  padding-top: clamp(3.2rem, 8vw, 4.5rem);
 }
 .title-stamps { position: absolute; inset: 0; pointer-events: none; }
 .stamp {
@@ -108,7 +109,12 @@ button:disabled { opacity: 0.45; cursor: default; }
   font-size: 1.05rem;
   line-height: 1.65;
 }
-.brand-version { margin: 0.6rem 0 0; color: var(--muted); font-size: 0.85rem; }
+.brand-version {
+  margin: 0.6rem 0 0;
+  color: var(--muted);
+  font-size: 0.85rem;
+  padding-right: 5.5rem;
+}
 .title-actions {
   position: relative;
   z-index: 1;
@@ -276,6 +282,7 @@ input[type="text"], input:not([type]) {
   align-items: center;
   gap: 0.6rem;
   padding: 0.45rem 0.7rem;
+  padding-right: 6.5rem;
   border-bottom: 3px solid var(--ink);
   background: var(--yolk);
   flex-wrap: wrap;
@@ -511,8 +518,10 @@ input[type="text"], input:not([type]) {
 
 #vol-dock {
   position: fixed;
-  left: 8px;
-  bottom: 8px;
+  top: max(8px, env(safe-area-inset-top));
+  right: max(8px, env(safe-area-inset-right));
+  left: auto;
+  bottom: auto;
   z-index: 7;
   display: flex;
   align-items: center;
@@ -522,6 +531,7 @@ input[type="text"], input:not([type]) {
   border-radius: 14px;
   padding: 0.25rem;
   box-shadow: 3px 3px 0 var(--ink);
+  max-width: min(calc(100vw - 16px), 22rem);
 }
 #vol-dock.vol-collapsed .vol-sliders { display: none; }
 .vol-sliders { display: flex; gap: 0.45rem; font-size: 0.75rem; padding-right: 0.3rem; }
@@ -667,7 +677,10 @@ input[type="text"], input:not([type]) {
     text-overflow: ellipsis;
   }
   .board-zoom button { min-width: 2.1rem; padding: 0.2rem 0.3rem; }
-  #vol-dock { top: 6px; right: 6px; bottom: auto; left: auto; }
+  #vol-dock {
+    top: max(6px, env(safe-area-inset-top));
+    right: max(6px, env(safe-area-inset-right));
+  }
   .modal-card, .results-panel, .reconnect-card {
     width: min(100%, 560px);
     max-height: min(88dvh, 760px);
