@@ -4,6 +4,13 @@
  */
 export const PATCH_NOTES = [
   {
+    version: '1.5.1',
+    date: '2026-11-26',
+    items: [
+      '対局メニューをキャラ｜スキルの横二列にし、PCでもスクロールなしで収まるよう余白を詰めた',
+    ],
+  },
+  {
     version: '1.5.0',
     date: '2026-11-26',
     items: [
