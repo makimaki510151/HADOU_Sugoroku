@@ -4,6 +4,13 @@
  */
 export const PATCH_NOTES = [
   {
+    version: '1.6.1',
+    date: '2026-11-26',
+    items: [
+      '対局ログの表示をおよそ10行分に広げた',
+    ],
+  },
+  {
     version: '1.6.0',
     date: '2026-11-26',
     items: [
