@@ -9,7 +9,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Dela+Gothic+One&family=Yusei+Magic&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="./css/styles.css" />
+  <link rel="stylesheet" href="./css/styles.css?v=1.6.5" />
 </head>
 <body>
   <section id="screen-title" class="screen active">
@@ -29,7 +29,7 @@
     <div class="title-actions">
       <button class="btn primary large" id="btn-host" type="button">部屋を作る</button>
       <button class="btn large" id="btn-join" type="button">部屋に入る</button>
-      <button class="btn yolk large" id="btn-local" type="button">この機で遊ぶ</button>
+      <button class="btn yolk large" id="btn-local" type="button">ローカルNPC戦</button>
       <button class="btn ghost" id="btn-howto" type="button">遊び方</button>
       <button class="btn ghost" id="btn-jobs" type="button">職一覧</button>
       <button class="btn ghost" id="btn-patch" type="button">パッチノート</button>
@@ -115,19 +115,17 @@
 
   <section id="screen-setup" class="screen">
     <div class="panel setup-panel">
-      <h2>この機の面子</h2>
-      <p class="hint">人間の席は、その人の番が来たらこの画面で操作する。CPUは勝手に動く。</p>
+      <h2>ローカルNPC戦</h2>
+      <p class="hint">あなたとCPUで対戦。人間の席の番が来たらここで操作する。</p>
       <div class="level-row" id="setup-level" role="radiogroup" aria-label="CPUの強さ">
         <span class="field-label">CPU</span>
         <button type="button" data-level="easy">ゆるい</button>
         <button type="button" data-level="normal" class="on">ふつう</button>
       </div>
       <div id="setup-seats"></div>
-      <div class="row-actions">
+      <div class="row-actions setup-actions">
         <button class="btn" id="btn-add-seat" type="button">席を足す</button>
         <button class="btn" id="btn-remove-seat" type="button">席を減らす</button>
-      </div>
-      <div class="row-actions">
         <button class="btn" id="btn-setup-back" type="button">戻る</button>
         <button class="btn primary" id="btn-start-local" type="button">ゲーム開始</button>
       </div>

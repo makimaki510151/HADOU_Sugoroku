@@ -283,9 +283,9 @@ function setStatus(msg, kind = 'info') {
   el.className = `status-line ${kind}`;
 }
 
-function jobButtons(selected, attr = 'data-job') {
+function jobButtons(selected, attr = 'data-job', { compact = false } = {}) {
   return JOB_LIST.map((job) => `
-    <button type="button" ${attr}="${job.id}" class="${selected === job.id ? 'on' : ''}" title="${escapeHtml(job.blurb)}">${job.mark} ${job.name}</button>
+    <button type="button" ${attr}="${job.id}" class="${selected === job.id ? 'on' : ''}" title="${escapeHtml(job.name)} — ${escapeHtml(job.blurb)}" aria-label="${escapeHtml(job.name)}">${compact ? job.mark : `${job.mark} ${job.name}`}</button>
   `).join('');
 }
 
@@ -296,7 +296,7 @@ function renderSetup() {
         <input data-field="name" maxlength="12" value="${escapeHtml(seat.name)}" aria-label="名前" />
         <button type="button" data-field="cpu">${seat.cpu ? 'CPU' : '人間'}</button>
       </div>
-      <div class="job-picks">${jobButtons(seat.job)}</div>
+      <div class="job-picks job-picks-compact">${jobButtons(seat.job, 'data-job', { compact: true })}</div>
     </div>
   `).join('');
   $('#setup-level').querySelectorAll('button').forEach((btn) => {
