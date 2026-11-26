@@ -673,7 +673,8 @@ async function playDiceOverlay(e) {
     : (parts.length > 1 ? `${parts.join(' + ')} = ${e.total}` : `出目 ${e.total}`);
   label.textContent = diceMoveLabel(e);
   audio.sfx.diceLand(e.faces[0]?.value || 1);
-  await wait(720);
+  // 出目・合計・進むマスを読めるよう、結果表示を長めに残す
+  await wait(2000);
   overlay.hidden = true;
 }
 

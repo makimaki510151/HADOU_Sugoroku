@@ -4,6 +4,13 @@
  */
 export const PATCH_NOTES = [
   {
+    version: '1.6.5',
+    date: '2026-11-26',
+    items: [
+      'ダイス結果の表示時間を延ばし、出目と進むマスが読めるようにした',
+    ],
+  },
+  {
     version: '1.6.4',
     date: '2026-11-26',
     items: [
