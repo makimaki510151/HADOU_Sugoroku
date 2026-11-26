@@ -51,6 +51,7 @@ export function badges(player) {
   }
   if (player.oneShotGuard) b.push('お守り');
   if (player.trapIgnore) b.push(`罠無視${player.trapIgnore}`);
+  if (player.stickyTrap) b.push(`粘着${player.stickyTrap}`);
   if (player.koShield) b.push('根性');
   if (player.zeroInsure) b.push('ゼロ保険');
   if (player.dicePlus) b.push(`出目補正+${player.dicePlus}`);
@@ -107,6 +108,7 @@ function blankPlayer(raw, index) {
     ironGuard: false,
     oneShotGuard: false,
     trapIgnore: 0,
+    stickyTrap: 0,
     koShield: false,
     downed: false,
     justRevived: false,
@@ -304,16 +306,17 @@ export function skillLockReason(state, seat, skillId) {
     if (ahead.ironGuard) return `${ahead.name} はガード中`;
   }
   if (skillId === 'execute') {
-    const ok = state.players.some((o) => (
-      o.id !== seat && !o.finished && o.hp > 0 && o.hp / o.maxHp <= (sk.hpRate || 0.5)
+    const range = sk.range || 3;
+    const ok = playersInRange(state, seat, range).some((o) => (
+      o.hp > 0 && o.hp / o.maxHp <= (sk.hpRate || 0.5)
     ));
-    if (!ok) return 'HP半分以下の相手がいない';
+    if (!ok) return `前後${range}マスに、HP半分以下の相手がいない`;
   }
   if (skillId === 'allin') {
     const low = player.hp / player.maxHp <= (sk.hpRate || 0.3);
     if (!low && !isLastPlace(state, seat)) return '最下位か、HP30%以下のとき';
   }
-  if (skillId === 'poison' && playersInRange(state, seat, sk.range || 8).length === 0) {
+  if (skillId === 'poison' && playersInRange(state, seat, sk.range || 4).length === 0) {
     return '届く範囲に相手がいない';
   }
   if (skillId === 'spike' && spikeTiles(state, seat).length === 0) {
@@ -377,14 +380,14 @@ export function listActions(state, seat) {
       continue;
     }
     if (sk.id === 'poison') {
-      for (const o of playersInRange(state, seat, sk.range || 8)) {
+      for (const o of playersInRange(state, seat, sk.range || 4)) {
         actions.push({ type: 'skill', id: 'poison', target: o.id });
       }
       continue;
     }
     if (sk.id === 'execute') {
-      for (const o of state.players) {
-        if (o.id === seat || o.finished || o.hp <= 0) continue;
+      for (const o of playersInRange(state, seat, sk.range || 3)) {
+        if (o.hp <= 0) continue;
         if (o.hp / o.maxHp <= (sk.hpRate || 0.5)) {
           actions.push({ type: 'skill', id: 'execute', target: o.id });
         }
@@ -508,6 +511,7 @@ function enterTile(state, seat, pos, events, opts) {
   }
   if (tile.kind === 'boost') {
     const steps = tile.steps || 3;
+    // 加速床は起動したら必ず消える（例外なし）
     state.tiles[pos] = null;
     events.push({ t: 'spring', kind: 'boost', seat, pos, steps });
     events.push(pushLog(state, `${player.name} が加速床で+${steps}`, 'good'));
@@ -515,6 +519,7 @@ function enterTile(state, seat, pos, events, opts) {
     return true;
   }
   if (player.ironGuard) {
+    // ガード通過は起動しないので罠は残る
     events.push({ t: 'block', seat, reason: 'guard' });
     events.push(pushLog(state, `${player.name} はガードのまま罠を通過`, 'good'));
     return false;
@@ -523,15 +528,36 @@ function enterTile(state, seat, pos, events, opts) {
     events.push({ t: 'spring', kind: 'spike', seat, pos });
     events.push(pushLog(state, `${player.name} が${pos + 1}マスのスパイクを踏んだ`, 'bad'));
     hurt(state, seat, tile.damage || 3, tile.owner, events, 'spike');
+    breakTrapAfterSpring(state, pos, tile, events);
     return true;
   }
   if (tile.kind === 'curse') {
     events.push({ t: 'spring', kind: 'curse', seat, pos });
     events.push(pushLog(state, `${player.name} は${pos + 1}マスの呪印で戻される`, 'bad'));
     knockback(state, seat, tile.back || 2, events);
+    breakTrapAfterSpring(state, pos, tile, events);
     return true;
   }
   return false;
+}
+
+/** 起動した罠は基本壊れる。durable だけ例外で残る。 */
+function breakTrapAfterSpring(state, pos, tile, events) {
+  if (tile?.durable) {
+    events.push(pushLog(state, `${pos + 1}マスの罠は粘着して残った`, 'system'));
+    return;
+  }
+  if (state.tiles[pos] !== tile) return;
+  state.tiles[pos] = null;
+  events.push({ t: 'break', pos, kind: tile.kind });
+  events.push(pushLog(state, `${pos + 1}マスの罠は壊れた`, 'system'));
+}
+
+/** 強化「粘着の罠」を1回消費して durable 罠を置く。 */
+function consumeStickyTrap(player) {
+  if ((player.stickyTrap || 0) <= 0) return false;
+  player.stickyTrap -= 1;
+  return true;
 }
 
 /**
@@ -726,6 +752,7 @@ function applyUpgrade(state, seat, upgradeId, events) {
   else if (upgradeId === 'cheer') player.diceModNext += 2;
   else if (upgradeId === 'omamori') player.oneShotGuard = true;
   else if (upgradeId === 'watchstep') player.trapIgnore += 1;
+  else if (upgradeId === 'sticky_trap') player.stickyTrap = (player.stickyTrap || 0) + 1;
   else if (upgradeId === 'floor') player.floorRolls += 3;
   else if (upgradeId === 'guts') player.koShield = true;
   else if (upgradeId === 'dash_plus') player.perks.dashPlus = (player.perks.dashPlus || 0) + 1;
@@ -859,21 +886,31 @@ function doSkill(state, seat, action, events) {
     const tiles = spikeTiles(state, seat);
     if (!tiles.includes(action.tile)) return 'そこには置けない';
     const damage = (sk.damage || 3) + (player.dmgPlus || 0) + (player.perks.spikePlus || 0);
-    state.tiles[action.tile] = { kind: 'spike', owner: seat, damage, hidden: false };
+    const durable = consumeStickyTrap(player);
+    state.tiles[action.tile] = { kind: 'spike', owner: seat, damage, hidden: false, durable };
     player.stats.traps += 1;
     setCt(player, id);
-    events.push({ t: 'place', seat, tile: action.tile, kind: 'spike' });
-    events.push(pushLog(state, `${player.name} が${action.tile + 1}マスにスパイク`, 'skill'));
+    events.push({ t: 'place', seat, tile: action.tile, kind: 'spike', durable });
+    events.push(pushLog(
+      state,
+      `${player.name} が${action.tile + 1}マスにスパイク${durable ? '（粘着）' : ''}`,
+      'skill',
+    ));
     return '';
   }
   if (id === 'curse') {
     const tiles = curseTiles(state, seat);
     if (!tiles.includes(action.tile)) return 'そこには置けない';
-    state.tiles[action.tile] = { kind: 'curse', owner: seat, back: sk.back || 2, hidden: false };
+    const durable = consumeStickyTrap(player);
+    state.tiles[action.tile] = { kind: 'curse', owner: seat, back: sk.back || 2, hidden: false, durable };
     player.stats.traps += 1;
     setCt(player, id);
-    events.push({ t: 'place', seat, tile: action.tile, kind: 'curse' });
-    events.push(pushLog(state, `${player.name} が${action.tile + 1}マスに呪印`, 'skill'));
+    events.push({ t: 'place', seat, tile: action.tile, kind: 'curse', durable });
+    events.push(pushLog(
+      state,
+      `${player.name} が${action.tile + 1}マスに呪印${durable ? '（粘着）' : ''}`,
+      'skill',
+    ));
     return '';
   }
   if (id === 'boost') {
@@ -889,7 +926,7 @@ function doSkill(state, seat, action, events) {
     return '';
   }
   if (id === 'poison') {
-    const targets = playersInRange(state, seat, sk.range || 8);
+    const targets = playersInRange(state, seat, sk.range || 4);
     const target = state.players[action.target];
     if (!target || !targets.includes(target)) return 'その相手には届かない';
     setCt(player, id);
@@ -910,6 +947,8 @@ function doSkill(state, seat, action, events) {
     const target = state.players[action.target];
     if (!target || target.id === seat || target.hp <= 0) return '対象がいない';
     if (target.hp / target.maxHp > (sk.hpRate || 0.5)) return 'まだHPが半分より上';
+    const range = sk.range || 3;
+    if (Math.abs(target.pos - player.pos) > range) return `前後${range}マスまで`;
     setCt(player, id);
     const dmg = power(player, sk.damage || 6, 'bladePlus');
     const res = hurt(state, target.id, dmg, seat, events, 'execute');

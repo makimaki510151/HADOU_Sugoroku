@@ -98,6 +98,7 @@ describe('ヴァンガード', () => {
     act(s, 0, { type: 'roll' }, [5]);
     assert.equal(s.players[0].pos, 2);
     assert.equal(s.players[0].hp, s.players[0].maxHp - 6);
+    assert.equal(s.tiles[2], null);
   });
 
   it('呪印は戻して移動を打ち切る', () => {
@@ -106,6 +107,7 @@ describe('ヴァンガード', () => {
     act(s, 0, { type: 'roll' }, [4]);
     assert.equal(s.players[0].pos, 1);
     assert.equal(s.players[0].hp, s.players[0].maxHp);
+    assert.equal(s.tiles[3], null);
   });
 
   it('ガードは次の自分のターン開始で切れる', () => {
@@ -171,6 +173,7 @@ describe('トラップマスター', () => {
     act(s, 0, { type: 'roll' }, [1]);
     assert.equal(s.players[0].pos, 1);
     assert.equal(s.players[0].hp, 7);
+    assert.equal(s.tiles[1].kind, 'spike');
   });
 
   it('他人の罠は普通に刺さる', () => {
@@ -180,6 +183,16 @@ describe('トラップマスター', () => {
     act(s, 0, { type: 'roll' }, [3]);
     assert.equal(s.players[0].pos, 1);
     assert.equal(s.players[0].hp, 7);
+    assert.equal(s.tiles[1], null);
+  });
+
+  it('起動した罠は壊れ、粘着だけ残る', () => {
+    const s = setup(['vanguard', 'trap']);
+    s.tiles[2] = { kind: 'spike', owner: 1, damage: 3, durable: true };
+    act(s, 0, { type: 'roll' }, [3]);
+    assert.equal(s.players[0].pos, 2);
+    assert.equal(s.tiles[2].kind, 'spike');
+    assert.equal(s.tiles[2].durable, true);
   });
 
   it('スパイクは後ろ3マスの空マスだけ', () => {
@@ -263,6 +276,8 @@ describe('アサシン', () => {
 
   it('半分以下を処刑で倒すと全CTが戻る', () => {
     const s = setup(['assassin', 'vanguard']);
+    s.players[0].pos = 2;
+    s.players[1].pos = 4;
     s.players[1].hp = 5;
     s.players[0].ct.poison = 2;
     s.players[0].ct.shadow = 4;
@@ -275,15 +290,36 @@ describe('アサシン', () => {
     assert.equal(s.players[0].ct.execute, 0);
   });
 
+  it('処刑は前後3マスを超えると届かない', () => {
+    const s = setup(['assassin', 'vanguard']);
+    s.players[0].pos = 0;
+    s.players[1].pos = 5;
+    s.players[1].hp = 4;
+    assert.match(skillLockReason(s, 0, 'execute'), /3マス/);
+    assert.equal(act(s, 0, { type: 'skill', id: 'execute', target: 1 }).ok, false);
+    assert.equal(s.players[1].hp, 4);
+  });
+
   it('毒刃はダメージと次の出目-2', () => {
     const s = setup(['assassin', 'vanguard']);
+    s.players[0].pos = 0;
+    s.players[1].pos = 3;
     act(s, 0, { type: 'skill', id: 'poison', target: 1 });
     assert.equal(s.players[1].hp, s.players[1].maxHp - 3);
     assert.equal(s.players[1].diceModNext, -2);
     act(s, 0, { type: 'roll' }, [2]);
     act(s, 1, { type: 'roll' }, [3]);
-    assert.equal(s.players[1].pos, 1);
+    assert.equal(s.players[1].pos, 4);
     assert.equal(s.players[1].diceModNext, 0);
+  });
+
+  it('毒刃は前後4マスを超えると届かない', () => {
+    const s = setup(['assassin', 'vanguard']);
+    s.players[0].pos = 0;
+    s.players[1].pos = 5;
+    assert.match(skillLockReason(s, 0, 'poison'), /届く範囲/);
+    assert.equal(act(s, 0, { type: 'skill', id: 'poison', target: 1 }).ok, false);
+    assert.equal(s.players[1].hp, s.players[1].maxHp);
   });
 });
 
@@ -346,13 +382,15 @@ describe('ギャンブラー', () => {
 
   it('ルーレットの余波で自分がダウンしたら、その番は終わる', () => {
     const s = setup(['gambler', 'assassin']);
-    s.players[0].hp = 6;
+    // 呪印は1回で壊れるので、歩法の刺しは1回分。HP3ならそこでダウン。
+    s.players[0].hp = 3;
     s.players[1].pos = 0;
     s.tiles[2] = { kind: 'curse', owner: 1, back: 3 };
     const res = act(s, 0, { type: 'skill', id: 'roulette' }, [1, 1]);
     assert.equal(res.ok, true);
     assert.equal(s.players[0].hp, 0);
     assert.equal(s.players[0].downed, true);
+    assert.equal(s.tiles[2], null);
     assert.notEqual(s.turn, 0);
   });
 

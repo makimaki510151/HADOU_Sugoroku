@@ -87,6 +87,7 @@ function trapMark(tile) {
  *   viewH: number,
  *   displayPos?: Record<number, number>,
  *   highlight?: Set<number>|number[],
+ *   inspect?: number|null,
  *   time?: number,
  * }} opts
  */
@@ -94,6 +95,7 @@ export function drawBoard(ctx, opts) {
   const { state, cam, viewW, viewH } = opts;
   const time = opts.time || 0;
   const highlight = opts.highlight instanceof Set ? opts.highlight : new Set(opts.highlight || []);
+  const inspect = Number.isInteger(opts.inspect) ? opts.inspect : -1;
   ctx.setTransform(1, 0, 0, 1, 0, 0);
   ctx.clearRect(0, 0, viewW, viewH);
   ctx.fillStyle = '#f6e2b8';
@@ -178,11 +180,16 @@ export function drawBoard(ctx, opts) {
     else if (mark?.label === '走') ctx.fillStyle = '#c8f5d8';
     else ctx.fillStyle = ROW_COLORS[r.row % ROW_COLORS.length];
     ctx.fill();
-    ctx.lineWidth = highlight.has(i) ? 6 : 3;
-    ctx.strokeStyle = highlight.has(i) ? '#e23d3d' : '#221814';
+    const isInspect = i === inspect;
+    ctx.lineWidth = highlight.has(i) || isInspect ? 6 : 3;
+    ctx.strokeStyle = highlight.has(i) ? '#e23d3d' : isInspect ? '#c47a12' : '#221814';
     ctx.stroke();
     if (highlight.has(i)) {
       ctx.strokeStyle = 'rgba(226,61,61,0.35)';
+      ctx.lineWidth = 10;
+      ctx.stroke();
+    } else if (isInspect) {
+      ctx.strokeStyle = 'rgba(196,122,18,0.35)';
       ctx.lineWidth = 10;
       ctx.stroke();
     }
@@ -300,13 +307,13 @@ export function describeTile(state, index) {
   else if (tile.hidden) body += ' なにか仕掛けてありそう…';
   else if (tile.kind === 'spike') {
     const owner = state.players[tile.owner]?.name || '誰か';
-    body += ` 【杭】スパイク（${owner} / ${tile.damage}ダメ・強制停止）`;
+    body += ` 【杭】スパイク（${owner} / ${tile.damage}ダメ・強制停止${tile.durable ? '・粘着' : '・起動で壊れる'}）`;
   } else if (tile.kind === 'curse') {
     const owner = state.players[tile.owner]?.name || '誰か';
-    body += ` 【呪】逆走の呪印（${owner} / ${tile.back || 2}マス戻る）`;
+    body += ` 【呪】逆走の呪印（${owner} / ${tile.back || 2}マス戻る${tile.durable ? '・粘着' : '・起動で壊れる'}）`;
   } else if (tile.kind === 'boost') {
     const owner = state.players[tile.owner]?.name || '誰か';
-    body += ` 【走】加速床（${owner} / +${tile.steps || 3}マス・消える）`;
+    body += ` 【走】加速床（${owner} / +${tile.steps || 3}マス・起動で消える）`;
   } else {
     body += ' 仕掛けあり';
   }

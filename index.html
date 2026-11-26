@@ -57,8 +57,8 @@
           <li>各ラウンドの手番は、<strong>開始時点でいちばん後ろの人から、いちばん前の人</strong>の順。同着なら席番号の大きいほうを後ろ扱い。</li>
           <li>ターン開始でCTが1減る。休み・ガードの期限もここで処理する。</li>
           <li>自分のスキルを好きなだけ使ってから、ダイスを振る。突撃とオールインは、その振った目が移動になって番が終わる。</li>
-          <li>止まったマスの罠が発動する。スパイクはダメージで強制停止、呪印は少し戻す。加速床はさらに進む。</li>
-          <li>仕掛けがあるマスにはマークがつく（隠す指定がない限り）。タップすると中身がわかる。</li>
+          <li>止まったマスの罠が発動する。スパイクはダメージで強制停止、呪印は少し戻す。加速床はさらに進む。<strong>起動した罠は基本壊れる</strong>（自分の罠を罠師が踏む／ガードや罠無視／粘着の罠は例外）。</li>
+          <li>仕掛けがあるマスにはマークがつく（隠す指定がない限り）。タップすると中身がわかり、説明は残る（同じマスをもう一度タップで閉じる）。</li>
         </ul>
       </section>
       <section class="howto-block">
@@ -72,8 +72,8 @@
         <h3>職</h3>
         <ul>
           <li><strong>ヴァンガード</strong> ダイス1〜6 / HP12。ダッシュ、ガード、後ろに誰かいるときの突撃。</li>
-          <li><strong>トラップマスター</strong> 1〜6 / HP10。自分の罠は踏んでも得。スパイク、呪印、起爆。</li>
-          <li><strong>アサシン</strong> 2〜5 / HP8。同じマスで刺して2マス進む。毒、入れ替え、処刑。</li>
+          <li><strong>トラップマスター</strong> 1〜6 / HP10。自分の罠は踏んでも得（罠は残る）。スパイク、呪印、起爆。</li>
+          <li><strong>アサシン</strong> 2〜5 / HP8。同じマスで刺して2マス進む。毒（前後4）、入れ替え、処刑（前後3）。</li>
           <li><strong>ギャンブラー</strong> 0〜8 / HP10。0で回復。イカサマ、道連れ、オールイン。</li>
           <li><strong>マグネット</strong> 1〜6 / HP11。近い相手に傷。引き寄せ、弾き飛ばし、遠い相手と入れ替え。</li>
           <li><strong>ランナー</strong> 2〜7 / HP9。7でさらに進む。スプリント、加速床、2位以下のオーバーラン。</li>
@@ -268,8 +268,10 @@
   <div id="toast" hidden></div>
 
   <div id="vol-dock" class="vol-collapsed">
-    <button type="button" id="btn-mute" class="btn tiny">音</button>
-    <button type="button" id="btn-vol-expand" class="btn tiny ghost" aria-label="音量">⋯</button>
+    <div class="vol-head">
+      <button type="button" id="btn-mute" class="btn tiny">音</button>
+      <button type="button" id="btn-vol-expand" class="btn tiny ghost" aria-label="音量">⋯</button>
+    </div>
     <div class="vol-sliders">
       <label>全体<input type="range" id="vol-master" min="0" max="1" step="0.01" /></label>
       <label>BGM<input type="range" id="vol-bgm" min="0" max="1" step="0.01" /></label>
