@@ -3,7 +3,7 @@
  * ホスト（とローカル）がこれを権威にする。ゲストは結果の状態を描くだけ。
  *
  * コースはマス1〜100（内部index 0〜99）。99に到達した瞬間勝ち。ぴったり不要。
- * HP0で次の自分のターンを1回休み、その次のターン開始時に最大HPの40%で復帰。
+ * HP0で次の自分のターンを1回休み、その次のターン開始時に最大HPまで回復して復帰。
  */
 
 import { JOBS, skillById } from './jobs.js';
@@ -11,7 +11,6 @@ import { upgradeById, upgradePool } from './upgrades.js';
 
 export const TRACK_LEN = 100;
 export const GOAL = 99;
-export const REVIVE_RATE = 0.4;
 
 export function currentPlayer(state) {
   return state.players[state.turn] || null;
@@ -525,7 +524,7 @@ function beginTurn(state, events) {
   }
   if (player.justRevived) {
     player.justRevived = false;
-    player.hp = Math.max(1, Math.ceil(player.maxHp * REVIVE_RATE));
+    player.hp = player.maxHp;
     let bonus = 0;
     if (player.job === 'vanguard') {
       bonus = jobOf(player).passive.bonus || 3;
