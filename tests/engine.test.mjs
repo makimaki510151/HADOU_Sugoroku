@@ -13,7 +13,7 @@ import {
 import { chooseCpuAction } from '../js/cpu.js';
 import { isMyTurnSeat } from '../js/turn.js';
 import { describeTile, tileRect } from '../js/board.js';
-import { JOB_LIST } from '../js/jobs.js';
+import { JOB_LIST, markedNum, passiveDescFor, skillCtCap, skillDescFor } from '../js/jobs.js';
 import { UPGRADES, upgradePool, isUpgradeAvailable, upgradeById } from '../js/upgrades.js';
 
 function setup(jobs, seed = 3) {
@@ -697,5 +697,45 @@ describe('強化プール', () => {
     }
     assert.equal(s3.turn, 0);
     assert.equal(s3.players[0].hp, Math.min(s3.players[0].maxHp, 8 + 1));
+  });
+});
+
+describe('強化数値の表記', () => {
+  it('変わったときだけ 現在(初期) になる', () => {
+    assert.equal(markedNum(3, 3), '3');
+    assert.equal(markedNum(4, 3), '4(3)');
+  });
+
+  it('ダッシュの移動とダメージが強化を反映する', () => {
+    const s = setup(['vanguard', 'trap']);
+    const p = s.players[0];
+    const sk = JOB_LIST[0].skills.find((x) => x.id === 'dash');
+    assert.match(skillDescFor(p, sk), /すぐに3マス進む/);
+    p.perks.dashSteps = 1;
+    p.perks.dashPlus = 1;
+    const text = skillDescFor(p, sk);
+    assert.match(text, /すぐに4\(3\)マス進む/);
+    assert.match(text, /4\(3\)ダメージ/);
+  });
+
+  it('CT短縮は CT1\(2\) のように出す', () => {
+    const s = setup(['vanguard', 'trap']);
+    const p = s.players[0];
+    p.ctCut = 1;
+    const sk = JOB_LIST[0].skills.find((x) => x.id === 'dash');
+    const cap = skillCtCap(p, sk);
+    assert.equal(cap.current, 1);
+    assert.equal(cap.base, 2);
+    assert.equal(markedNum(cap.current, cap.base), '1(2)');
+  });
+
+  it('パッシブも強化後は括弧付き', () => {
+    const s = setup(['magnet', 'vanguard']);
+    const p = s.players[0];
+    p.perks.fieldRange = 1;
+    p.perks.fieldPlus = 1;
+    const text = passiveDescFor(p, JOB_LIST.find((j) => j.id === 'magnet').passive);
+    assert.match(text, /前後3\(2\)マス/);
+    assert.match(text, /2\(1\)ダメージ/);
   });
 });

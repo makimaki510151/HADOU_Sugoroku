@@ -3,7 +3,15 @@
 import { APP_VERSION } from './version.js';
 import { createAudio } from './audio.js';
 import { createNet } from './net.js';
-import { JOB_LIST, JOBS, PLAYER_COLORS } from './jobs.js';
+import {
+  JOB_LIST,
+  JOBS,
+  PLAYER_COLORS,
+  markedNum,
+  passiveDescFor,
+  skillCtCap,
+  skillDescFor,
+} from './jobs.js';
 import { upgradeById } from './upgrades.js';
 import { PATCH_NOTES } from './patchNotes.js';
 import { isLocalPlayer, isMyTurnSeat } from './turn.js';
@@ -426,13 +434,18 @@ function renderHud() {
       ? `<button type="button" class="btn tiny" id="btn-look-back">手番に戻す</button>`
       : '';
     skills = `<div class="sheet-head"><div><strong>${escapeHtml(focus.name)} のスキル</strong><div class="pc-sub">${escapeHtml(job.name)} ・ ダイス${job.dice[0]}〜${job.dice[1]}</div></div>${back}</div>`
-      + `<p class="passive">常時 ${escapeHtml(job.passive.name)} — ${escapeHtml(job.passive.desc)}</p>`
+      + `<p class="passive">常時 ${escapeHtml(job.passive.name)} — ${escapeHtml(passiveDescFor(focus, job.passive))}</p>`
       + job.skills.map((sk) => {
         const ct = focus.ct[sk.id] || 0;
         const lock = skillLockReason(g, focus.id, sk.id);
         const usable = actionable && !lock;
-        const ctLabel = ct > 0 ? `CT${ct}` : (lock ? '条件' : (sk.kind === 'ult' ? '必殺' : '使える'));
-        const detail = lock && ct === 0 ? `${sk.desc}（${lock}）` : sk.desc;
+        const cap = skillCtCap(focus, sk);
+        const ctCapLabel = `CT${markedNum(cap.current, cap.base)}`;
+        const ctLabel = ct > 0
+          ? `CT${ct}`
+          : (lock ? '条件' : (cap.current !== cap.base ? ctCapLabel : (sk.kind === 'ult' ? '必殺' : '使える')));
+        const body = skillDescFor(focus, sk);
+        const detail = lock && ct === 0 ? `${body}（${lock}）` : body;
         return `<button type="button" class="btn skill-btn${usable ? '' : ' look'}" ${usable ? `data-skill="${sk.id}"` : 'disabled'}>
           <span class="ct">${ctLabel}</span>
           ${escapeHtml(sk.name)}

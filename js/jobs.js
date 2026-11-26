@@ -282,3 +282,150 @@ export function skillById(jobId, skillId) {
   if (!job) return null;
   return job.skills.find((s) => s.id === skillId) || null;
 }
+
+/** 強化で数値が変わっているときだけ 現在値(初期値) にする */
+export function markedNum(current, base) {
+  const cur = Number(current);
+  const bas = Number(base);
+  if (!Number.isFinite(cur) || !Number.isFinite(bas) || cur === bas) return String(bas);
+  return `${cur}(${bas})`;
+}
+
+function perk(player, key) {
+  return player?.perks?.[key] || 0;
+}
+
+/** スキルに実際かかる CT 上限（短縮込み） */
+export function skillCtCap(player, sk) {
+  const base = sk?.ct ?? 0;
+  if (!player || !sk) return { current: base, base };
+  let current = base;
+  if (sk.kind === 'active') current = Math.max(1, base - (player.ctCut || 0));
+  if (sk.kind === 'ult') current = Math.max(1, base - (player.ultCut || 0));
+  return { current, base };
+}
+
+/** HUD 用：パッシブ説明（強化反映） */
+export function passiveDescFor(player, passive) {
+  if (!passive) return '';
+  if (!player) return passive.desc;
+  const id = passive.id;
+  if (id === 'spirit') {
+    const base = passive.bonus || 3;
+    const cur = base + perk(player, 'spiritPlus');
+    return `1ターン休みから復帰したターンの出目に+${markedNum(cur, base)}。`;
+  }
+  if (id === 'footwork') {
+    const dmgBase = passive.damage || 3;
+    const bonusBase = passive.bonus || 2;
+    const dmg = dmgBase + (player.dmgPlus || 0) + perk(player, 'bladePlus');
+    const bonus = bonusBase + perk(player, 'footBonus');
+    return `誰かと同じマスに止まると${markedNum(dmg, dmgBase)}ダメージ、さらに${markedNum(bonus, bonusBase)}マス進む。`;
+  }
+  if (id === 'luck') {
+    const base = passive.heal || 2;
+    const cur = base + perk(player, 'zeroHeal');
+    return `出目0でHP+${markedNum(cur, base)}。通常スキルのCTが1つ分短くなる（0の個数ぶん）。`;
+  }
+  if (id === 'aura') {
+    const rangeBase = passive.range || 2;
+    const dmgBase = passive.damage || 1;
+    const range = rangeBase + perk(player, 'fieldRange');
+    const dmg = dmgBase + perk(player, 'fieldPlus');
+    return `自分のターン開始時、前後${markedNum(range, rangeBase)}マス以内の相手に${markedNum(dmg, dmgBase)}ダメージ。`;
+  }
+  if (id === 'stride') {
+    const base = passive.bonus || 2;
+    const cur = base + perk(player, 'stridePlus');
+    return `ダイスで自然な${passive.face || 7}が出たら、その移動のあとさらに${markedNum(cur, base)}マス進む。`;
+  }
+  return passive.desc;
+}
+
+/** HUD 用：スキル説明（強化反映）。変わった数値だけ 4(3) 形式 */
+export function skillDescFor(player, sk) {
+  if (!sk) return '';
+  if (!player) return sk.desc;
+  const dmgPlus = player.dmgPlus || 0;
+  switch (sk.id) {
+    case 'dash': {
+      const stepsBase = sk.steps || 3;
+      const dmgBase = sk.damage || 3;
+      const steps = perk(player, 'dashSteps') ? 4 : stepsBase;
+      const dmg = dmgBase + dmgPlus + perk(player, 'dashPlus');
+      return `すぐに${markedNum(steps, stepsBase)}マス進む。追い越した相手に${markedNum(dmg, dmgBase)}ダメージ。その後、通常のダイスも振る。`;
+    }
+    case 'guard': {
+      const heal = perk(player, 'guardHeal');
+      return heal > 0
+        ? `次の自分のターン開始まで、ダメージと強制移動を無効。発動時にHP+${heal}。`
+        : sk.desc;
+    }
+    case 'spike': {
+      const dmgBase = sk.damage || 3;
+      const dmg = dmgBase + dmgPlus + perk(player, 'spikePlus');
+      return `後ろ${sk.range || 3}マス以内の空マスに、踏むと${markedNum(dmg, dmgBase)}ダメージで強制停止する罠。起動したら壊れる。`;
+    }
+    case 'curse': {
+      const backBase = sk.back || 2;
+      const back = backBase + perk(player, 'cursePlus');
+      return `前${sk.range || 5}マス以内の1マスに、踏むと${markedNum(back, backBase)}マス戻される罠。起動したら壊れる。上書きできる。`;
+    }
+    case 'pandemonium': {
+      const dmgBase = sk.damage || 4;
+      const dmg = dmgBase + dmgPlus + perk(player, 'boomPlus');
+      return `自分の罠が2つ以上あるとき。全部起爆し、各罠の前後${sk.radius || 2}マスの相手に${markedNum(dmg, dmgBase)}ダメージ、1マス後退。`;
+    }
+    case 'poison': {
+      const rangeBase = sk.range || 4;
+      const dmgBase = sk.damage || 3;
+      const penBase = sk.penalty || 0;
+      const range = rangeBase + perk(player, 'poisonRange');
+      const dmg = dmgBase + dmgPlus + perk(player, 'bladePlus');
+      const pen = penBase + perk(player, 'poisonPen');
+      let text = `前後${markedNum(range, rangeBase)}マスの相手1人に${markedNum(dmg, dmgBase)}ダメージ。`;
+      if (penBase > 0) text += `次の出目合計が-${markedNum(pen, penBase)}。`;
+      return text;
+    }
+    case 'shadow': {
+      const rangeBase = sk.range || 6;
+      const range = rangeBase + perk(player, 'shadowRange');
+      return `前方で最も近い相手と位置を入れ替える。差は${markedNum(range, rangeBase)}マスまで。ガード中は失敗。`;
+    }
+    case 'execute': {
+      const rangeBase = sk.range || 3;
+      const dmgBase = sk.damage || 6;
+      const dmg = dmgBase + dmgPlus + perk(player, 'bladePlus');
+      return `前後${rangeBase}マス以内で、HPが半分以下の相手に${markedNum(dmg, dmgBase)}ダメージ。この技で倒すと、自分の全CTが0に戻る。`;
+    }
+    case 'roulette': {
+      const stepsBase = sk.steps || 3;
+      const steps = perk(player, 'rouletteSteps') ? 4 : stepsBase;
+      return `全員から1人をランダムに選び、半々で${markedNum(steps, stepsBase)}マス進めるか戻す。ガードは無効化する。`;
+    }
+    case 'pull': {
+      const stepsBase = sk.steps || 3;
+      const steps = stepsBase + perk(player, 'pullPlus');
+      return `前後${sk.range || 6}マス以内の相手1人を、自分のほうへ最大${markedNum(steps, stepsBase)}マス引き寄せる。`;
+    }
+    case 'push': {
+      const stepsBase = sk.steps || 3;
+      const steps = stepsBase + perk(player, 'pushPlus');
+      return `前後${sk.range || 3}マス以内でいちばん近い相手を、自分から離れる向きへ${markedNum(steps, stepsBase)}マス飛ばす。`;
+    }
+    case 'sprint': {
+      const stepsBase = sk.steps || 4;
+      const steps = perk(player, 'sprintPlus') ? 6 : stepsBase;
+      return `すぐに${markedNum(steps, stepsBase)}マス進む。その後、通常のダイスも振る。`;
+    }
+    case 'boost': {
+      const rangeBase = sk.range || 5;
+      const stepsBase = sk.steps || 3;
+      const range = rangeBase + perk(player, 'boostRange');
+      const steps = stepsBase + perk(player, 'boostPlus');
+      return `前方${markedNum(range, rangeBase)}マス以内の空マスに加速床。踏むと${markedNum(steps, stepsBase)}マスさらに進み、起動したら消える。`;
+    }
+    default:
+      return sk.desc;
+  }
+}
