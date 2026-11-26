@@ -408,6 +408,24 @@ describe('ギャンブラー', () => {
 });
 
 describe('ラウンド', () => {
+  it('ログは古い順で、ラウンドごとに区切りがある', () => {
+    const s = setup(['vanguard', 'trap']);
+    assert.equal(s.log[0].kind, 'divider');
+    assert.match(s.log[0].text, /ラウンド 1/);
+    assert.ok(s.log[0].seq < s.log[s.log.length - 1].seq);
+    act(s, 0, { type: 'roll' }, [1]);
+    s.players[0].pos = 10;
+    s.players[1].pos = 4;
+    act(s, 1, { type: 'roll' }, [0]);
+    assert.equal(s.round, 2);
+    const dividers = s.log.filter((l) => l.kind === 'divider');
+    assert.equal(dividers.length, 2);
+    assert.match(dividers[1].text, /ラウンド 2/);
+    const i1 = s.log.findIndex((l) => l.kind === 'divider' && /ラウンド 1/.test(l.text));
+    const i2 = s.log.findIndex((l) => l.kind === 'divider' && /ラウンド 2/.test(l.text));
+    assert.ok(i1 < i2);
+  });
+
   it('2ラウンド目、最下位だけダイス+1。1位はドラフトしない', () => {
     const s = setup(['vanguard', 'gambler']);
     act(s, 0, { type: 'roll' }, [1]);

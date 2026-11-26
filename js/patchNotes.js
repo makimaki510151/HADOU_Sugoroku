@@ -4,6 +4,13 @@
  */
 export const PATCH_NOTES = [
   {
+    version: '1.6.2',
+    date: '2026-11-26',
+    items: [
+      '対局ログを上から下（古い→新しい）の順にし、ラウンドごとに軽い区切りを入れた',
+    ],
+  },
+  {
     version: '1.6.1',
     date: '2026-11-26',
     items: [

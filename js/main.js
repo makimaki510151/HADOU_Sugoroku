@@ -461,9 +461,17 @@ function renderHud() {
     const spec = job?.skills.find((s) => s.id === app.targeting.id);
     $('#target-hint').textContent = `${spec?.name || ''} — 盤の赤枠をタップ`;
   }
-  $('#log').innerHTML = g.log.slice(0, 18).map((line) => (
-    `<p class="${escapeHtml(line.kind || '')}">${escapeHtml(line.text)}</p>`
-  )).join('');
+  const logEl = $('#log');
+  if (logEl) {
+    const lines = g.log.slice(-24);
+    const stickBottom = logEl.scrollHeight - logEl.scrollTop - logEl.clientHeight < 48;
+    logEl.innerHTML = lines.map((line) => (
+      `<p class="${escapeHtml(line.kind || '')}">${escapeHtml(line.text)}</p>`
+    )).join('');
+    if (stickBottom || lines.length) {
+      logEl.scrollTop = logEl.scrollHeight;
+    }
+  }
 
   const urgent = g.phase !== 'gameover' && g.players.some((p) => p.pos >= 85);
   audio.setBgmMode(urgent ? 'urgency' : 'normal');
@@ -1005,8 +1013,8 @@ function notePeerLeft(peerId) {
 
 function pushSystem(text) {
   app.game.seq += 1;
-  app.game.log.unshift({ text, kind: 'system', seq: app.game.seq });
-  if (app.game.log.length > 80) app.game.log.length = 80;
+  app.game.log.push({ text, kind: 'system', seq: app.game.seq });
+  if (app.game.log.length > 80) app.game.log.splice(0, app.game.log.length - 80);
 }
 
 function handleNetEvent({ from, data }) {

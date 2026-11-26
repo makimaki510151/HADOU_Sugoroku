@@ -70,4 +70,8 @@ describe('画面の骨', () => {
     assert.match(css, /#log\s*\{[^}]*max-height:\s*11rem/s);
     assert.doesNotMatch(css, /#log\s*\{[^}]*max-height:\s*4\.2rem/s);
   });
+
+  it('ログのラウンド区切りスタイルがある', () => {
+    assert.match(css, /#log \.divider/);
+  });
 });

@@ -522,6 +522,20 @@ input[type="text"], input:not([type]) {
 #log .bad { color: #9d1230; }
 #log .good { color: #0d6b3d; }
 #log .ult { color: #7a2e00; }
+#log .divider {
+  margin: 0.55rem 0 0.2rem;
+  padding-top: 0.4rem;
+  border-top: 1px solid color-mix(in srgb, var(--ink) 22%, transparent);
+  color: #8a6a5a;
+  font-size: 0.68rem;
+  letter-spacing: 0.08em;
+  text-align: center;
+}
+#log .divider:first-child {
+  margin-top: 0.1rem;
+  padding-top: 0.15rem;
+  border-top: none;
+}
 
 #modal[hidden], #winner[hidden], #reconnect-overlay[hidden], #toast[hidden] { display: none; }
 #modal, #winner, #reconnect-overlay {
