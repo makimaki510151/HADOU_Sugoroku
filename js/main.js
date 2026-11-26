@@ -60,6 +60,7 @@ const app = {
   flashResolve: null,
   draftPeek: false,
   lookSeat: null,
+  inspectIndex: null,
 };
 
 function escapeHtml(s) {
@@ -379,6 +380,18 @@ function resizeBoard() {
   if (!app.userCam) fitCamera(app.cam, canvas.width, canvas.height);
 }
 
+function syncInspect() {
+  const el = $('#inspect');
+  if (!el) return;
+  if (app.inspectIndex == null || !app.game) {
+    el.textContent = 'マスをタップすると中身が出る';
+    el.classList.remove('pinned');
+    return;
+  }
+  el.textContent = describeTile(app.game, app.inspectIndex);
+  el.classList.add('pinned');
+}
+
 function draw() {
   const canvas = $('#board');
   if (!canvas || !$('#screen-game').classList.contains('active') || !app.game) return;
@@ -390,6 +403,7 @@ function draw() {
     viewH: canvas.height,
     displayPos: app.displayPos,
     highlight: app.targeting?.tiles,
+    inspect: app.inspectIndex,
     time: performance.now(),
   });
 }
@@ -557,6 +571,7 @@ async function pump() {
 function refresh() {
   if (!$('#screen-game').classList.contains('active')) return;
   renderHud();
+  syncInspect();
 }
 
 function publish(events) {
@@ -635,6 +650,8 @@ function showGame() {
   $('#modal').hidden = true;
   $('#event-flash').hidden = true;
   $('#dice-overlay').hidden = true;
+  app.inspectIndex = null;
+  syncInspect();
   showScreen('screen-game');
   audio.startBgm();
 }
@@ -647,6 +664,7 @@ function beginMatch(players) {
     cpuLevel: app.cpuLevel,
   });
   app.game = state;
+  app.inspectIndex = null;
   app.cpuSeat = null;
   app.cpuUsed = new Set();
   app.userCam = false;
@@ -1008,16 +1026,9 @@ function bindBoard() {
     if (moved || !app.game) return;
     const index = hitTile(app.cam, p.x, p.y);
     if (index < 0) return;
-    const detail = describeTile(app.game, index);
-    $('#inspect').textContent = detail;
-    const tile = app.game.tiles?.[index];
-    if (tile && !tile.hidden && !app.targeting && !app.busy) {
-      const kindLabel = tile.kind === 'spike' ? 'スパイク'
-        : tile.kind === 'curse' ? '逆走の呪印'
-          : tile.kind === 'boost' ? '加速床'
-            : '仕掛け';
-      flash('マスの仕掛け', `${index + 1}マス ・ ${kindLabel}`, detail);
-    }
+    // 同じマスをもう一度タップしたら説明を閉じる。勝手には消さない。
+    app.inspectIndex = app.inspectIndex === index ? null : index;
+    syncInspect();
     if (app.targeting?.tiles?.has(index)) {
       const seat = currentPlayer(app.game).id;
       const tile = index;
