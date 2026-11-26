@@ -186,7 +186,7 @@ function exportResultsPng() {
   ctx.font = `20px ${body}`;
   ctx.fillStyle = '#5a4036';
   const jobName = winner ? (JOBS[winner.job]?.name || winner.job) : '';
-  ctx.fillText(`${jobName}が100マス目に乗った  ·  v${APP_VERSION}`, pad, pad + 108);
+  ctx.fillText(`${jobName}がマス100に乗った  ·  v${APP_VERSION}`, pad, pad + 108);
 
   let y = pad + 140;
   ranked.forEach((p, i) => {
@@ -194,7 +194,7 @@ function exportResultsPng() {
     ctx.font = `22px ${body}`;
     ctx.fillText(`${i + 1}. ${p.name}`, pad, y);
     ctx.textAlign = 'right';
-    ctx.fillText(`${p.pos + 1}マス / HP${p.hp}`, W - pad, y);
+    ctx.fillText(`マス${p.pos + 1} / HP${p.hp}`, W - pad, y);
     ctx.textAlign = 'left';
     const barY = y + 10;
     const barW = W - pad * 2;
@@ -406,7 +406,7 @@ function renderHud() {
     return `
       <button type="button" class="player-card ${p.id === cur?.id ? 'turn' : ''} ${controlling(p) ? 'me' : ''} ${looking ? 'looking' : ''}" data-look="${p.id}" style="--pc:${p.color}">
         <div class="pc-top"><strong>${rankOf(g, p.id)}位 ${escapeHtml(p.name)}</strong><span>${p.hp}/${p.maxHp}</span></div>
-        <div class="pc-sub">${JOBS[p.job].mark} ${JOBS[p.job].name} ・ ${p.pos + 1}マス${p.isCPU ? ' ・ CPU' : ''}${p.offline ? ' ・ 切断' : ''}</div>
+        <div class="pc-sub">${JOBS[p.job].mark} ${JOBS[p.job].name} ・ マス${p.pos + 1}${p.isCPU ? ' ・ CPU' : ''}${p.offline ? ' ・ 切断' : ''}</div>
         <div class="hp"><span style="width:${ratio * 100}%; background-color:${p.color}"></span></div>
         <div class="badges">${tags.map((t) => `<span class="badge">${escapeHtml(t)}</span>`).join('')}<span class="badge look-badge">${looking ? '表示中' : '技'}</span></div>
       </button>
@@ -533,10 +533,10 @@ function renderWinner() {
   const winner = g.players[g.winner];
   $('#winner').hidden = false;
   $('#winner-name').textContent = `${winner?.name || ''} の勝ち`;
-  $('#winner-sub').textContent = `${JOBS[winner.job].name}が100マス目に乗った`;
+  $('#winner-sub').textContent = `${JOBS[winner.job].name}がマス100に乗った`;
   $('#results-body').innerHTML = ranked.map((p, i) => `
     <div class="result-row">
-      <div class="pc-top"><span>${i + 1}. ${escapeHtml(p.name)}</span><span>${p.pos + 1}マス / HP${p.hp}</span></div>
+      <div class="pc-top"><span>${i + 1}. ${escapeHtml(p.name)}</span><span>マス${p.pos + 1} / HP${p.hp}</span></div>
       <div class="result-bar"><span style="width:${((p.pos + 1) / 100) * 100}%; --pc:${p.color}"></span></div>
     </div>
   `).join('') + `<div>${awards.map((a) => `<span class="award">${escapeHtml(a.title)} ${escapeHtml(a.name)}（${escapeHtml(a.detail)}）</span>`).join('')}</div>`;
@@ -728,7 +728,7 @@ async function playEvent(e) {
   }
   if (e.t === 'win') {
     audio.sfx.win();
-    await flash('GOAL', `${name(e.seat)} の勝ち`, '100マス目');
+    await flash('GOAL', `${name(e.seat)} の勝ち`, 'マス100');
     return;
   }
   if (e.t === 'skill') {

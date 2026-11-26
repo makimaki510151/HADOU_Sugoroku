@@ -298,11 +298,11 @@ function drawToken(ctx, x, y, player, active) {
 
 export function describeTile(state, index) {
   if (index < 0 || index > 99) return 'コースの外';
-  if (index === 0) return '1マス スタート';
-  if (index === 99) return '100マス ゴール。乗った人の勝ち';
+  if (index === 0) return 'マス1 スタート';
+  if (index === 99) return 'マス100 ゴール。乗った人の勝ち';
   const tile = state?.tiles?.[index];
   const who = state?.players?.filter((p) => p.pos === index).map((p) => p.name).join('、');
-  let body = `${index + 1}マス`;
+  let body = `マス${index + 1}`;
   if (!tile) body += ' なんもない';
   else if (tile.hidden) body += ' なにか仕掛けてありそう…';
   else if (tile.kind === 'spike') {
