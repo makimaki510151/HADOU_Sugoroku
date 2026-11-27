@@ -26,6 +26,7 @@ import {
   rankOf,
   serializeState,
   skillLockReason,
+  skipDraftSeat,
 } from './engine.js';
 import { chooseCpuAction, chooseDraft } from './cpu.js';
 import { createCamera, describeTile, drawBoard, fitCamera, hitTile } from './board.js';
@@ -57,6 +58,8 @@ const app = {
   turnMarkSeat: null,
   queue: [],
   inbox: [],
+  /** ホストが演出中に受け取ったゲスト操作。pump後に消化する */
+  pendingActions: [],
   busy: false,
   pumping: false,
   targeting: null,
@@ -113,6 +116,7 @@ function returnToTitle() {
   app.turnMarkSeat = null;
   app.queue = [];
   app.inbox = [];
+  app.pendingActions = [];
   app.targeting = null;
   app.playerPick = null;
   app.draftPeek = false;
@@ -810,6 +814,8 @@ function enqueue(events) {
   if (!list.length) {
     refresh();
     scheduleCpu();
+    drainPendingActions();
+    drainInbox();
     return;
   }
   if (list.some((e) => e.t === 'step' || e.t === 'swap')) {
@@ -829,7 +835,11 @@ async function pump() {
   try {
     while (app.queue.length) {
       const e = app.queue.shift();
-      await playEvent(e);
+      try {
+        await playEvent(e);
+      } catch (err) {
+        console.error('[fx]', err);
+      }
     }
   } finally {
     app.displayPos = null;
@@ -839,6 +849,7 @@ async function pump() {
     if (app.game) app.turnMarkSeat = app.game.turn;
     refresh();
     scheduleCpu();
+    drainPendingActions();
     drainInbox();
   }
 }
@@ -874,6 +885,27 @@ function resolveAction(seat, action) {
   return true;
 }
 
+/** 演出中でもホストはゲスト操作を捨てず、後で適用する */
+function queueOrResolve(seat, action) {
+  if (!app.game) return false;
+  if (app.busy) {
+    if (app.pendingActions.length >= 32) app.pendingActions.shift();
+    app.pendingActions.push({ seat, action });
+    return true;
+  }
+  return resolveAction(seat, action);
+}
+
+function drainPendingActions() {
+  while (!app.busy && app.game && app.pendingActions.length) {
+    const next = app.pendingActions.shift();
+    const player = app.game.players[next.seat];
+    if (!player || player.isCPU) continue;
+    resolveAction(next.seat, next.action);
+    if (app.busy) break;
+  }
+}
+
 function sendLocal(seat, action) {
   audio.sfx.click();
   if (app.mode === 'guest') {
@@ -882,7 +914,7 @@ function sendLocal(seat, action) {
     }
     return;
   }
-  resolveAction(seat, action);
+  queueOrResolve(seat, action);
 }
 
 function scheduleCpu() {
@@ -890,17 +922,28 @@ function scheduleCpu() {
   if (app.mode === 'guest' || app.busy || !app.game || app.game.phase === 'gameover') return;
   const g = app.game;
   if (g.phase === 'draft') {
-    const seat = Object.keys(g.drafts.offers).map(Number).find((id) => (
-      !g.drafts.picks[id] && g.players[id].isCPU
+    const offers = g.drafts?.offers;
+    if (!offers) {
+      // 壊れたドラフト状態は act へ戻せないのでログだけ出して抜ける
+      console.error('[cpu] draft without offers');
+      return;
+    }
+    const seat = Object.keys(offers).map(Number).find((id) => (
+      !g.drafts.picks[id] && g.players[id]?.isCPU
     ));
     if (seat == null) return;
     app.cpuTimer = setTimeout(() => {
       if (app.busy) return scheduleCpu();
       if (!app.game || app.game.phase !== 'draft') return scheduleCpu();
-      const upgradeId = chooseDraft(app.game, seat)
-        || app.game.drafts?.offers?.[seat]?.[0]
-        || null;
-      if (!upgradeId) return scheduleCpu();
+      const offer = app.game.drafts?.offers?.[seat] || [];
+      const upgradeId = chooseDraft(app.game, seat) || offer[0] || null;
+      if (!upgradeId) {
+        // 空候補で固まるのを防ぐ
+        const res = skipDraftSeat(app.game, seat);
+        if (res.ok) publish(res.events);
+        else scheduleCpu();
+        return;
+      }
       if (!resolveAction(seat, { type: 'draft', upgradeId })) scheduleCpu();
     }, 650);
     return;
@@ -913,9 +956,11 @@ function scheduleCpu() {
     app.cpuCount = 0;
   }
   app.cpuTimer = setTimeout(() => {
+    // busy 中は pump 終了時の scheduleCpu に任せる（ここでは再入場すると top の busy ガードで何もしない）
     if (app.busy || !app.game) return;
     const now = currentPlayer(app.game);
-    if (!now?.isCPU || app.game.phase !== 'act') return;
+    // 手番が draft 等へ移っていたら付け直す
+    if (!now?.isCPU || app.game.phase !== 'act') return scheduleCpu();
     let action = { type: 'roll' };
     try {
       if (app.cpuCount < 6) {
@@ -1105,6 +1150,8 @@ function handToCpu(seat) {
   if (!player || player.isCPU || app.mode !== 'host') return;
   player.isCPU = true;
   player.offline = true;
+  // 切断席の未処理操作は捨てる（CPUが代わりに動かす）
+  app.pendingActions = app.pendingActions.filter((a) => a.seat !== seat);
   const text = `${player.name} の代わりをCPUがやる`;
   pushSystem(text);
   toast(text);
@@ -1189,7 +1236,7 @@ function handleNetEvent({ from, data }) {
       const player = app.game.players[data.seat];
       if (!player || player.isCPU) return;
       if (player.peerId !== from) return;
-      resolveAction(data.seat, data.action);
+      queueOrResolve(data.seat, data.action);
       return;
     }
     if (data.type === 'nudge') {
